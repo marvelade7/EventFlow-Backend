@@ -6,6 +6,7 @@ require("dotenv").config();
 const URI = process.env.MONGO_URI;
 
 const userRoutes = require("./routes/user.route");
+const eventRoutes = require("./routes/event.route");
 
 mongoose
     .connect(URI)
@@ -20,7 +21,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/api", userRoutes);
+
+app.use("/api/users", userRoutes);
+app.use("/api/events", eventRoutes);
 
 app.get("/", (req, res) => {
     res.send("Backend is running");
