@@ -8,6 +8,5 @@ router.post('/register', postSignup)
 router.post('/login', postSignin)
 router.get('/dashboard', getDashboard)
 router.patch('/update-user', updateUser)
-router.post('/upload-image', upload.single('image'), uploadImage)
 
 module.exports = router;
