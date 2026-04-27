@@ -13,7 +13,7 @@ const createEvent = (req, res) => {
         venue,
         location,
         isFree,
-        price,
+        ticketPrice,
         timeZone,
     } = req.body;
 
@@ -29,7 +29,7 @@ const createEvent = (req, res) => {
         venue,
         location,
         isFree: isFree ?? false,
-        price: isFree ? 0 : price,
+        ticketPrice: isFree ? 0 : ticketPrice,
         timeZone,
     });
 

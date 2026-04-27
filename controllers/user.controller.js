@@ -1,6 +1,11 @@
 const customer = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+dotenv.config();
+
+const jwtSecret = process.env.JWT_SECRET;
 
 const postSignup = async (req, res) => {
     try {
@@ -107,8 +112,15 @@ const postSignin = (req, res) => {
                     .status(400)
                     .json({ message: "invalid email or password" });
             }
+
+            const token = jwt.sign(
+                { id: foundUser._id, email: foundUser.email },
+                jwtSecret,
+                { expiresIn: "1h" },
+            );
             return res.json({
                 message: "Login successful",
+                token,
                 user: {
                     id: foundUser._id,
                     firstName: foundUser.firstName,
@@ -125,4 +137,42 @@ const postSignin = (req, res) => {
         });
 };
 
-module.exports = { postSignup, postSignin };
+const getDashboard = (req, res) => {
+    let token = req.headers.authorization.split(" ")[1];
+
+    jwt.verify(token, jwtSecret, (err, decoded) => {
+        if (err) {
+            return res
+                .status(401)
+                .json({ message: "Invalid or expired token" });
+        } else {
+            console.log("Decoded token data:", decoded);
+            let userId = decoded.id;
+
+            customer
+                .findOne({ _id: userId })
+                .then((user) => {
+                    if (!user) {
+                        return res
+                            .status(404)
+                            .json({ message: "User not found" });
+                    }
+                    console.log("User found", user);
+                    res.json({
+                        message: "Dashboard accessed successfully",
+                        user: {
+                            email: user.email,
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                        },
+                    });
+                })
+                .catch((err) => {
+                    console.error("Error fetching user:", err);
+                    res.status(500).json({ message: "Internal server error" });
+                });
+        }
+    });
+};
+
+module.exports = { postSignup, postSignin, getDashboard };
