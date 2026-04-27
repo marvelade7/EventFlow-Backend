@@ -169,6 +169,10 @@ const getDashboard = (req, res) => {
                             email: user.email,
                             firstName: user.firstName,
                             lastName: user.lastName,
+                            profilePic: user.profilePic,
+                            location: user.location,
+                            phoneNumber: user.phoneNumber,
+                            bio: user.bio,
                         },
                     });
                 })
@@ -242,8 +246,6 @@ const updateUser = (req, res) => {
                             .json({ message: "User not found" });
                     }
                     if (res.headersSent) return;
-                    console.log("BODY:", req.body);
-                    console.log("FILE:", req.file);
 
                     res.json({
                         message: "Profile updated successfully",
