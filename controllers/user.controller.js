@@ -208,8 +208,8 @@ const updateUser = (req, res) => {
 
         const userId = decoded.id;
 
-        const { firstName, lastName, email, phoneNumber, bio, location } =
-            req.body;
+        const body = req.body || {};
+        const { firstName, lastName, email, phoneNumber, bio, location } = body;
 
         const updateData = {};
 
@@ -219,6 +219,11 @@ const updateUser = (req, res) => {
         if (phoneNumber) updateData.phoneNumber = phoneNumber;
         if (bio) updateData.bio = bio;
         if (location) updateData.location = location;
+
+        // Check if at least one field is being updated (or file is being uploaded)
+        if (!req.file && Object.keys(updateData).length === 0) {
+            return res.status(400).json({ message: "Please provide at least one field to update" });
+        }
 
         if (req.file) {
             uploadToCloudinary(req.file.buffer)
@@ -231,10 +236,14 @@ const updateUser = (req, res) => {
                 })
                 .then((updatedUser) => {
                     if (!updatedUser) {
+                        if (res.headersSent) return;
                         return res
                             .status(404)
                             .json({ message: "User not found" });
                     }
+                    if (res.headersSent) return;
+                    console.log("BODY:", req.body);
+                    console.log("FILE:", req.file);
 
                     res.json({
                         message: "Profile updated successfully",
@@ -242,27 +251,30 @@ const updateUser = (req, res) => {
                     });
                 })
                 .catch((err) => {
-                    console.error(err);
-                    res.status(500).json({ message: "Server error" });
+                    console.error("Error updating profile with file:", err);
+                    if (res.headersSent) return;
+                    res.status(500).json({ message: "Error updating profile: " + err.message });
                 });
         } else {
             customer
                 .findByIdAndUpdate(userId, updateData, { new: true })
                 .then((updatedUser) => {
                     if (!updatedUser) {
+                        if (res.headersSent) return;
                         return res
                             .status(404)
                             .json({ message: "User not found" });
                     }
-
+                    if (res.headersSent) return;
                     res.json({
                         message: "Profile updated successfully",
                         user: updatedUser,
                     });
                 })
                 .catch((err) => {
-                    console.error(err);
-                    res.status(500).json({ message: "Server error" });
+                    console.error("Error updating profile:", err);
+                    if (res.headersSent) return;
+                    res.status(500).json({ message: "Error updating profile: " + err.message });
                 });
         }
     });
