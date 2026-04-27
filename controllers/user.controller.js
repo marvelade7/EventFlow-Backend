@@ -4,6 +4,7 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 dotenv.config();
+const cloudinary = require("../config/cloudinary");
 
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -140,6 +141,10 @@ const postSignin = (req, res) => {
 const getDashboard = (req, res) => {
     let token = req.headers.authorization.split(" ")[1];
 
+    if (!token) {
+        return res.status(401).json({ message: "No token provided" });
+    }
+
     jwt.verify(token, jwtSecret, (err, decoded) => {
         if (err) {
             return res
@@ -175,4 +180,120 @@ const getDashboard = (req, res) => {
     });
 };
 
-module.exports = { postSignup, postSignin, getDashboard };
+const uploadToCloudinary = (buffer) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder: "avatars" },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            },
+        );
+
+        stream.end(buffer);
+    });
+};
+
+const updateUser = (req, res) => {
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "No token provided" });
+    }
+
+    jwt.verify(token, jwtSecret, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ message: "Invalid token" });
+        }
+
+        const userId = decoded.id;
+
+        const { firstName, lastName, email, phoneNumber, bio, location } =
+            req.body;
+
+        const updateData = {};
+
+        if (firstName) updateData.firstName = firstName;
+        if (lastName) updateData.lastName = lastName;
+        if (email) updateData.email = email;
+        if (phoneNumber) updateData.phoneNumber = phoneNumber;
+        if (bio) updateData.bio = bio;
+        if (location) updateData.location = location;
+
+        if (req.file) {
+            uploadToCloudinary(req.file.buffer)
+                .then((result) => {
+                    updateData.profilePic = result.secure_url;
+
+                    return customer.findByIdAndUpdate(userId, updateData, {
+                        new: true,
+                    });
+                })
+                .then((updatedUser) => {
+                    if (!updatedUser) {
+                        return res
+                            .status(404)
+                            .json({ message: "User not found" });
+                    }
+
+                    res.json({
+                        message: "Profile updated successfully",
+                        user: updatedUser,
+                    });
+                })
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).json({ message: "Server error" });
+                });
+        } else {
+            customer
+                .findByIdAndUpdate(userId, updateData, { new: true })
+                .then((updatedUser) => {
+                    if (!updatedUser) {
+                        return res
+                            .status(404)
+                            .json({ message: "User not found" });
+                    }
+
+                    res.json({
+                        message: "Profile updated successfully",
+                        user: updatedUser,
+                    });
+                })
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).json({ message: "Server error" });
+                });
+        }
+    });
+};
+
+// const uploadImage = (req, res) => {
+//     const file = req.file;
+
+//     if (!file) {
+//         return res.status(400).json({ message: "No file uploaded" });
+//     }
+
+//     const stream = cloudinary.uploader.upload_stream(
+//         { folder: "avatars" },
+//         (error, result) => {
+//             if (error) {
+//                 return res.status(500).json({ message: error.message });
+//             }
+
+//             res.json({
+//                 url: result.secure_url,
+//             });
+//         },
+//     );
+
+//     stream.end(file.buffer);
+// };
+
+module.exports = {
+    postSignup,
+    postSignin,
+    getDashboard,
+    updateUser,
+};
