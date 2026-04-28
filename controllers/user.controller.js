@@ -394,6 +394,92 @@ const verifyEmail = (req, res) => {
     });
 };
 
+const forgotPassword = (req, res) => {
+    const { email } = req.body;
+    customer.findOne({ email }).then((user) => {
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const resetToken = crypto.randomBytes(20).toString("hex");
+        const resetTokenHash = crypto
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
+        const resetTokenExpires = Date.now() + 60 * 60 * 1000;
+
+        user.resetPasswordToken = resetTokenHash;
+        user.resetPasswordExpires = resetTokenExpires;
+
+        return user.save().then(() => {
+            const mailUser = process.env.mailUser;
+            const mailPass = process.env.mailPass;
+            const resetLink = `http://localhost:5000/reset-password/${resetToken}`;
+
+            let transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: mailUser,
+                    pass: mailPass,
+                },
+            });
+            let mailOptions = {
+                from: mailUser,
+                to: email,
+                subject: "Your Password Reset Link",
+                text: `Click the link to reset your password: ${resetLink}. This link will expire in 1 hour. If you did not request this, please ignore this email.`,
+            };
+            transporter.sendMail(mailOptions, function (err, info) {
+                if (err) {
+                    console.log("Error sending reset password link", err);
+                    return res
+                        .status(500)
+                        .json({
+                            message: "Error sending reset password link",
+                        });
+                } else {
+                    console.log("Reset password link sent", info.response);
+                    return res.json({
+                        message: "Reset password link sent successfully",
+                    });
+                }
+            });
+        });
+    });
+};
+
+const resetPassword = (req, res) => {
+    const { token, newPassword } = req.body;
+    const resetTokenHash = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+    customer
+        .findOne({
+            resetPasswordToken: resetTokenHash,
+            resetPasswordExpires: { $gt: Date.now() },
+        })
+        .then((user) => {
+            if (!user) {
+                return res.status(400).json({ message: "Invalid or expired token" });
+            }
+
+            let salt = bcrypt.genSaltSync(10);
+            user.password = bcrypt.hashSync(newPassword, salt);
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpires = undefined;
+
+            return user.save().then(() => {
+                return res.json({ message: "Password reset successful" });
+            });
+        })
+        .catch((err) => {
+            console.error("Error resetting password:", err);
+            res.status(500).json({ message: "Internal server error" });
+        });
+};
+
 module.exports = {
     postSignup,
     postSignin,
@@ -401,4 +487,6 @@ module.exports = {
     updateUser,
     sendOtpEmail,
     verifyEmail,
+    forgotPassword,
+    resetPassword
 };

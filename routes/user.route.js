@@ -8,6 +8,8 @@ const {
     updateUser,
     verifyEmail,
     sendOtpEmail,
+    forgotPassword,
+    resetPassword
 } = require("../controllers/user.controller");
 
 const router = express.Router();
@@ -18,5 +20,7 @@ router.get("/dashboard", getDashboard);
 router.patch("/update-user", upload.single("profilePic"), updateUser);
 router.post('/verify-email', verifyEmail);
 router.post('/send-otp-email', sendOtpEmail);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 module.exports = router;
