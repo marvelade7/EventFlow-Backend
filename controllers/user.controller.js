@@ -174,6 +174,7 @@ const getDashboard = (req, res) => {
                             location: user.location,
                             phoneNumber: user.phoneNumber,
                             bio: user.bio,
+                            isVerified: user.isVerified,
                         },
                     });
                 })
@@ -335,7 +336,7 @@ const sendOtpEmail = (req, res) => {
             let mailOptions = {
                 from: mailUser,
                 to: email,
-                subject: "Your OTP Code for Password Reset",
+                subject: "Your OTP Code for Email Verification",
                 text: `Your OTP code is ${otp}. It will expire in 10 minutes. If you did not request this, please ignore this email.`,
             };
             transporter.sendMail(mailOptions, function (err, info) {
