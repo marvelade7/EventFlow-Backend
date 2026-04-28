@@ -414,7 +414,7 @@ const forgotPassword = (req, res) => {
         return user.save().then(() => {
             const mailUser = process.env.mailUser;
             const mailPass = process.env.mailPass;
-            const resetLink = `http://localhost:5000/reset-password/${resetToken}`;
+            const resetLink = `https://eventflow-backend-fwv4.onrender.com/reset-password/${resetToken}`;
 
             let transporter = nodemailer.createTransport({
                 service: "gmail",
