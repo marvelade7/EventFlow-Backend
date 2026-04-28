@@ -33,20 +33,28 @@ const createEvent = (req, res) => {
         timeZone,
     });
 
-    newEvent.save().then((event) => {
-        console.log(event)
-        res.status(201).json({
-            message: "Event created successfully 🎉",
-            event,
+    if (!user.isVerified) {
+        return res.status(403).json({
+            message: "Email not verified. Please verify your email to create an event.",
         });
-    })
-    .catch((err) => {
-        console.log(err)
-        res.status(501).json({
-            message: 'Error creating event',
-            error: err.message
+    }
+
+    newEvent
+        .save()
+        .then((event) => {
+            console.log(event);
+            res.status(201).json({
+                message: "Event created successfully 🎉",
+                event,
+            });
         })
-    })
+        .catch((err) => {
+            console.log(err);
+            res.status(501).json({
+                message: "Error creating event",
+                error: err.message,
+            });
+        });
 };
 
-module.exports = { createEvent }
+module.exports = { createEvent };

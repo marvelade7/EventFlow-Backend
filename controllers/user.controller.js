@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 dotenv.config();
 const cloudinary = require("../config/cloudinary");
+const crypto = require("crypto");
 
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -226,7 +227,9 @@ const updateUser = (req, res) => {
 
         // Check if at least one field is being updated (or file is being uploaded)
         if (!req.file && Object.keys(updateData).length === 0) {
-            return res.status(400).json({ message: "Please provide at least one field to update" });
+            return res.status(400).json({
+                message: "Please provide at least one field to update",
+            });
         }
 
         if (req.file) {
@@ -255,7 +258,9 @@ const updateUser = (req, res) => {
                 .catch((err) => {
                     console.error("Error updating profile with file:", err);
                     if (res.headersSent) return;
-                    res.status(500).json({ message: "Error updating profile: " + err.message });
+                    res.status(500).json({
+                        message: "Error updating profile: " + err.message,
+                    });
                 });
         } else {
             customer
@@ -276,38 +281,123 @@ const updateUser = (req, res) => {
                 .catch((err) => {
                     console.error("Error updating profile:", err);
                     if (res.headersSent) return;
-                    res.status(500).json({ message: "Error updating profile: " + err.message });
+                    res.status(500).json({
+                        message: "Error updating profile: " + err.message,
+                    });
                 });
         }
     });
 };
 
-// const uploadImage = (req, res) => {
-//     const file = req.file;
+const sendOtpEmail = (req, res) => {
+    const { email } = req.body;
 
-//     if (!file) {
-//         return res.status(400).json({ message: "No file uploaded" });
-//     }
+    customer.findOne({ email }).then((user) => {
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
 
-//     const stream = cloudinary.uploader.upload_stream(
-//         { folder: "avatars" },
-//         (error, result) => {
-//             if (error) {
-//                 return res.status(500).json({ message: error.message });
-//             }
+        if (
+            user.otpResendCount >= 3 &&
+            Date.now() - user.otpLastSentAt < 24 * 60 * 60 * 1000
+        ) {
+            return res.status(429).json({
+                message: "Too many attempts. Try again after 24 hours",
+            });
+        }
 
-//             res.json({
-//                 url: result.secure_url,
-//             });
-//         },
-//     );
+        if (user.otpLastSentAt && Date.now() - user.otpLastSentAt < 60 * 1000) {
+            return res.status(429).json({
+                message: "Wait 60 seconds before requesting another OTP",
+            });
+        }
 
-//     stream.end(file.buffer);
-// };
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+        const otpExpires = Date.now() + 10 * 60 * 1000;
+
+        user.otpHash = otpHash;
+        user.otpExpires = otpExpires;
+        user.otpResendCount = (user.otpResendCount || 0) + 1;
+        user.otpLastSentAt = Date.now();
+
+        user.save().then(() => {
+            const mailUser = process.env.mailUser;
+            const mailPass = process.env.mailPass;
+
+            let transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: mailUser,
+                    pass: mailPass,
+                },
+            });
+            let mailOptions = {
+                from: mailUser,
+                to: email,
+                subject: "Your OTP Code for Password Reset",
+                text: `Your OTP code is ${otp}. It will expire in 10 minutes. If you did not request this, please ignore this email.`,
+            };
+            transporter.sendMail(mailOptions, function (err, info) {
+                if (err) {
+                    console.log("Error sending OTP email", err);
+                    return res
+                        .status(500)
+                        .json({ message: "Error sending OTP email" });
+                } else {
+                    console.log("OTP email sent", info.response);
+                    return res.json({
+                        message: "OTP sent to email successfully",
+                    });
+                }
+            });
+        });
+    });
+};
+
+const verifyEmail = (req, res) => {
+    const { email, otp } = req.body;
+
+    customer.findOne({ email }).then((user) => {
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ message: "Email already verified" });
+        }
+
+        if (!user.otpHash || !user.otpExpires) {
+            return res.status(400).json({ message: "No OTP requested" });
+        }
+
+        if (Date.now() > user.otpExpires) {
+            return res.status(400).json({ message: "OTP has expired" });
+        }
+
+        const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+
+        if (otpHash !== user.otpHash) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        user.isVerified = true;
+        user.otpHash = undefined;
+        user.otpExpires = undefined;
+        user.otpResendCount = 0;
+        user.otpLastSentAt = undefined;
+
+        return user.save().then(() => {
+            return res.json({ message: "Email verified successfully" });
+        });
+    });
+};
 
 module.exports = {
     postSignup,
     postSignin,
     getDashboard,
     updateUser,
+    sendOtpEmail,
+    verifyEmail,
 };
