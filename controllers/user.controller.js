@@ -212,7 +212,9 @@ const getDashboard = (req, res) => {
         });
 };
 
-uploadToCloudinary(req.file.buffer, "avatars")
+const uploadProfilePicture = (fileBuffer) => {
+    return uploadToCloudinary(fileBuffer, "profile_pictures");
+};
 
 const updateUser = (req, res) => {
     // const token = req.headers.authorization?.split(" ")[1];
@@ -324,7 +326,7 @@ const updateUser = (req, res) => {
     }
 
     if (req.file) {
-        uploadToCloudinary(req.file.buffer)
+        uploadProfilePicture(req.file.buffer)
             .then((result) => {
                 updateData.profilePic = result.secure_url;
 
