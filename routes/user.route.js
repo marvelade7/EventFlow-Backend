@@ -1,6 +1,8 @@
 const express = require("express");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
+const authMiddleware = require("../middlewares/auth.middleware");
+
 const {
     postSignup,
     postSignin,
@@ -16,8 +18,8 @@ const router = express.Router();
 
 router.post("/register", postSignup);
 router.post("/login", postSignin);
-router.get("/dashboard", getDashboard);
-router.patch("/update-user", upload.single("profilePic"), updateUser);
+router.get("/dashboard", authMiddleware, getDashboard);
+router.patch("/update-user", authMiddleware, upload.single("profilePic"), updateUser);
 router.post('/verify-email', verifyEmail);
 router.post('/send-otp-email', sendOtpEmail);
 router.post('/forgot-password', forgotPassword);

@@ -1,10 +1,10 @@
-const customer = require("../models/user.model");
+const Customer = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 dotenv.config();
-const cloudinary = require("../config/cloudinary");
+const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const crypto = require("crypto");
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -22,7 +22,7 @@ const postSignup = async (req, res) => {
             return res.status(400).json({ message: "Accept terms first" });
         }
 
-        const existingUser = await customer.findOne({ email });
+        const existingUser = await Customer.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: "User already exist" });
         }
@@ -30,7 +30,7 @@ const postSignup = async (req, res) => {
         let salt = bcrypt.genSaltSync(10);
         let hashedPassword = bcrypt.hashSync(password, salt);
 
-        const newUser = new customer({
+        const newUser = new Customer({
             firstName,
             lastName,
             email,
@@ -100,8 +100,7 @@ const postSignup = async (req, res) => {
 const postSignin = (req, res) => {
     const { email, password } = req.body;
 
-    customer
-        .findOne({ email })
+    Customer.findOne({ email })
         .then((foundUser) => {
             if (!foundUser) {
                 return res
@@ -140,160 +139,242 @@ const postSignin = (req, res) => {
 };
 
 const getDashboard = (req, res) => {
-    let token = req.headers.authorization.split(" ")[1];
+    // let token = req.headers.authorization.split(" ")[1];
 
-    if (!token) {
-        return res.status(401).json({ message: "No token provided" });
-    }
+    // if (!token) {
+    //     return res.status(401).json({ message: "No token provided" });
+    // }
 
-    jwt.verify(token, jwtSecret, (err, decoded) => {
-        if (err) {
-            return res
-                .status(401)
-                .json({ message: "Invalid or expired token" });
-        } else {
-            console.log("Decoded token data:", decoded);
-            let userId = decoded.id;
+    // jwt.verify(token, jwtSecret, (err, decoded) => {
+    //     if (err) {
+    //         return res
+    //             .status(401)
+    //             .json({ message: "Invalid or expired token" });
+    //     } else {
+    //         console.log("Decoded token data:", decoded);
+    //         let userId = decoded.id;
 
-            customer
-                .findOne({ _id: userId })
-                .then((user) => {
-                    if (!user) {
-                        return res
-                            .status(404)
-                            .json({ message: "User not found" });
-                    }
-                    console.log("User found", user);
-                    res.json({
-                        message: "Dashboard accessed successfully",
-                        user: {
-                            email: user.email,
-                            firstName: user.firstName,
-                            lastName: user.lastName,
-                            profilePic: user.profilePic,
-                            location: user.location,
-                            phoneNumber: user.phoneNumber,
-                            bio: user.bio,
-                            isVerified: user.isVerified,
-                        },
-                    });
-                })
-                .catch((err) => {
-                    console.error("Error fetching user:", err);
-                    res.status(500).json({ message: "Internal server error" });
-                });
-        }
-    });
+    //         Customer
+    //             .findOne({ _id: userId })
+    //             .then((user) => {
+    //                 if (!user) {
+    //                     return res
+    //                         .status(404)
+    //                         .json({ message: "User not found" });
+    //                 }
+    //                 console.log("User found", user);
+    //                 res.json({
+    //                     message: "Dashboard accessed successfully",
+    //                     user: {
+    //                         email: user.email,
+    //                         firstName: user.firstName,
+    //                         lastName: user.lastName,
+    //                         profilePic: user.profilePic,
+    //                         location: user.location,
+    //                         phoneNumber: user.phoneNumber,
+    //                         bio: user.bio,
+    //                         isVerified: user.isVerified,
+    //                     },
+    //                 });
+    //             })
+    //             .catch((err) => {
+    //                 console.error("Error fetching user:", err);
+    //                 res.status(500).json({ message: "Internal server error" });
+    //             });
+    //     }
+    // });
+
+    const userId = req.user.id;
+
+    Customer.findOne({ _id: userId })
+        .then((user) => {
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            res.json({
+                message: "Dashboard accessed successfully",
+                user: {
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    profilePic: user.profilePic,
+                    location: user.location,
+                    phoneNumber: user.phoneNumber,
+                    bio: user.bio,
+                    isVerified: user.isVerified,
+                },
+            });
+        })
+        .catch((err) => {
+            console.error("Error fetching user:", err);
+            res.status(500).json({ message: "Internal server error" });
+        });
 };
 
-const uploadToCloudinary = (buffer) => {
-    return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-            { folder: "avatars" },
-            (error, result) => {
-                if (error) return reject(error);
-                resolve(result);
-            },
-        );
-
-        stream.end(buffer);
-    });
-};
+uploadToCloudinary(req.file.buffer, "avatars")
 
 const updateUser = (req, res) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    // const token = req.headers.authorization?.split(" ")[1];
 
-    if (!token) {
-        return res.status(401).json({ message: "No token provided" });
+    // if (!token) {
+    //     return res.status(401).json({ message: "No token provided" });
+    // }
+
+    // jwt.verify(token, jwtSecret, (err, decoded) => {
+    //     if (err) {
+    //         return res.status(401).json({ message: "Invalid token" });
+    //     }
+
+    //     const userId = decoded.id;
+
+    //     const body = req.body || {};
+    //     const { firstName, lastName, email, phoneNumber, bio, location } = body;
+
+    //     const updateData = {};
+
+    //     if (firstName) updateData.firstName = firstName;
+    //     if (lastName) updateData.lastName = lastName;
+    //     if (email) updateData.email = email;
+    //     if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    //     if (bio) updateData.bio = bio;
+    //     if (location) updateData.location = location;
+
+    //     // Check if at least one field is being updated (or file is being uploaded)
+    //     if (!req.file && Object.keys(updateData).length === 0) {
+    //         return res.status(400).json({
+    //             message: "Please provide at least one field to update",
+    //         });
+    //     }
+
+    //     if (req.file) {
+    //         uploadToCloudinary(req.file.buffer)
+    //             .then((result) => {
+    //                 updateData.profilePic = result.secure_url;
+
+    //                 return Customer.findByIdAndUpdate(userId, updateData, {
+    //                     new: true,
+    //                 });
+    //             })
+    //             .then((updatedUser) => {
+    //                 if (!updatedUser) {
+    //                     if (res.headersSent) return;
+    //                     return res
+    //                         .status(404)
+    //                         .json({ message: "User not found" });
+    //                 }
+    //                 if (res.headersSent) return;
+
+    //                 res.json({
+    //                     message: "Profile updated successfully",
+    //                     user: updatedUser,
+    //                 });
+    //             })
+    //             .catch((err) => {
+    //                 console.error("Error updating profile with file:", err);
+    //                 if (res.headersSent) return;
+    //                 res.status(500).json({
+    //                     message: "Error updating profile: " + err.message,
+    //                 });
+    //             });
+    //     } else {
+    //         Customer.findByIdAndUpdate(userId, updateData, { new: true })
+    //             .then((updatedUser) => {
+    //                 if (!updatedUser) {
+    //                     if (res.headersSent) return;
+    //                     return res
+    //                         .status(404)
+    //                         .json({ message: "User not found" });
+    //                 }
+    //                 if (res.headersSent) return;
+    //                 res.json({
+    //                     message: "Profile updated successfully",
+    //                     user: updatedUser,
+    //                 });
+    //             })
+    //             .catch((err) => {
+    //                 console.error("Error updating profile:", err);
+    //                 if (res.headersSent) return;
+    //                 res.status(500).json({
+    //                     message: "Error updating profile: " + err.message,
+    //                 });
+    //             });
+    //     }
+    // });
+
+    const userId = req.user.id;
+
+    const body = req.body || {};
+    const { firstName, lastName, email, phoneNumber, bio, location } = body;
+
+    const updateData = {};
+
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    if (email) updateData.email = email;
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (bio) updateData.bio = bio;
+    if (location) updateData.location = location;
+
+    // If nothing is being updated
+    if (!req.file && Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+            message: "Please provide at least one field to update",
+        });
     }
 
-    jwt.verify(token, jwtSecret, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ message: "Invalid token" });
-        }
+    if (req.file) {
+        uploadToCloudinary(req.file.buffer)
+            .then((result) => {
+                updateData.profilePic = result.secure_url;
 
-        const userId = decoded.id;
+                return Customer.findByIdAndUpdate(userId, updateData, {
+                    new: true,
+                });
+            })
+            .then((updatedUser) => {
+                if (!updatedUser) {
+                    return res.status(404).json({
+                        message: "User not found",
+                    });
+                }
 
-        const body = req.body || {};
-        const { firstName, lastName, email, phoneNumber, bio, location } = body;
-
-        const updateData = {};
-
-        if (firstName) updateData.firstName = firstName;
-        if (lastName) updateData.lastName = lastName;
-        if (email) updateData.email = email;
-        if (phoneNumber) updateData.phoneNumber = phoneNumber;
-        if (bio) updateData.bio = bio;
-        if (location) updateData.location = location;
-
-        // Check if at least one field is being updated (or file is being uploaded)
-        if (!req.file && Object.keys(updateData).length === 0) {
-            return res.status(400).json({
-                message: "Please provide at least one field to update",
+                res.json({
+                    message: "Profile updated successfully",
+                    user: updatedUser,
+                });
+            })
+            .catch((err) => {
+                res.status(500).json({
+                    message: "Error updating profile: " + err.message,
+                });
             });
-        }
-
-        if (req.file) {
-            uploadToCloudinary(req.file.buffer)
-                .then((result) => {
-                    updateData.profilePic = result.secure_url;
-
-                    return customer.findByIdAndUpdate(userId, updateData, {
-                        new: true,
+    } else {
+        Customer.findByIdAndUpdate(userId, updateData, { new: true })
+            .then((updatedUser) => {
+                if (!updatedUser) {
+                    return res.status(404).json({
+                        message: "User not found",
                     });
-                })
-                .then((updatedUser) => {
-                    if (!updatedUser) {
-                        if (res.headersSent) return;
-                        return res
-                            .status(404)
-                            .json({ message: "User not found" });
-                    }
-                    if (res.headersSent) return;
+                }
 
-                    res.json({
-                        message: "Profile updated successfully",
-                        user: updatedUser,
-                    });
-                })
-                .catch((err) => {
-                    console.error("Error updating profile with file:", err);
-                    if (res.headersSent) return;
-                    res.status(500).json({
-                        message: "Error updating profile: " + err.message,
-                    });
+                res.json({
+                    message: "Profile updated successfully",
+                    user: updatedUser,
                 });
-        } else {
-            customer
-                .findByIdAndUpdate(userId, updateData, { new: true })
-                .then((updatedUser) => {
-                    if (!updatedUser) {
-                        if (res.headersSent) return;
-                        return res
-                            .status(404)
-                            .json({ message: "User not found" });
-                    }
-                    if (res.headersSent) return;
-                    res.json({
-                        message: "Profile updated successfully",
-                        user: updatedUser,
-                    });
-                })
-                .catch((err) => {
-                    console.error("Error updating profile:", err);
-                    if (res.headersSent) return;
-                    res.status(500).json({
-                        message: "Error updating profile: " + err.message,
-                    });
+            })
+            .catch((err) => {
+                res.status(500).json({
+                    message: "Error updating profile: " + err.message,
                 });
-        }
-    });
+            });
+    }
 };
 
 const sendOtpEmail = (req, res) => {
     const { email } = req.body;
 
-    customer.findOne({ email }).then((user) => {
+    Customer.findOne({ email }).then((user) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -359,7 +440,7 @@ const sendOtpEmail = (req, res) => {
 const verifyEmail = (req, res) => {
     const { email, otp } = req.body;
 
-    customer.findOne({ email }).then((user) => {
+    Customer.findOne({ email }).then((user) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -396,7 +477,7 @@ const verifyEmail = (req, res) => {
 
 const forgotPassword = (req, res) => {
     const { email } = req.body;
-    customer.findOne({ email }).then((user) => {
+    Customer.findOne({ email }).then((user) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -432,11 +513,9 @@ const forgotPassword = (req, res) => {
             transporter.sendMail(mailOptions, function (err, info) {
                 if (err) {
                     console.log("Error sending reset password link", err);
-                    return res
-                        .status(500)
-                        .json({
-                            message: "Error sending reset password link",
-                        });
+                    return res.status(500).json({
+                        message: "Error sending reset password link",
+                    });
                 } else {
                     console.log("Reset password link sent", info.response);
                     return res.json({
@@ -455,14 +534,15 @@ const resetPassword = (req, res) => {
         .update(token)
         .digest("hex");
 
-    customer
-        .findOne({
-            resetPasswordToken: resetTokenHash,
-            resetPasswordExpires: { $gt: Date.now() },
-        })
+    Customer.findOne({
+        resetPasswordToken: resetTokenHash,
+        resetPasswordExpires: { $gt: Date.now() },
+    })
         .then((user) => {
             if (!user) {
-                return res.status(400).json({ message: "Invalid or expired token" });
+                return res
+                    .status(400)
+                    .json({ message: "Invalid or expired token" });
             }
 
             let salt = bcrypt.genSaltSync(10);
@@ -488,5 +568,5 @@ module.exports = {
     sendOtpEmail,
     verifyEmail,
     forgotPassword,
-    resetPassword
+    resetPassword,
 };
