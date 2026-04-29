@@ -39,9 +39,31 @@ const createEvent = (req, res) => {
                 timeZone,
             } = req.body;
 
+            // Parse stringified values (happens with FormData)
+            const parsedIsFree = typeof isFree === 'string' ? isFree === 'true' : isFree;
+            let parsedTicketTypes = [];
+            
+            if (ticketTypes && typeof ticketTypes === 'string') {
+                try {
+                    parsedTicketTypes = JSON.parse(ticketTypes);
+                } catch (e) {
+                    console.error("Error parsing ticketTypes:", e);
+                    parsedTicketTypes = [];
+                }
+            } else if (Array.isArray(ticketTypes)) {
+                parsedTicketTypes = ticketTypes;
+            }
+
             if (!req.file) {
                 return res.status(400).json({
                     message: "Banner image is required",
+                });
+            }
+
+            // Validate ticket types if event is not free
+            if (!parsedIsFree && (!parsedTicketTypes || parsedTicketTypes.length === 0)) {
+                return res.status(400).json({
+                    message: "Ticket types are required for paid events",
                 });
             }
 
@@ -65,8 +87,8 @@ const createEvent = (req, res) => {
                             city,
                             country,
                         },
-                        isFree: isFree ?? false,
-                        ticketTypes: isFree ? [] : ticketTypes,
+                        isFree: parsedIsFree,
+                        ticketTypes: parsedIsFree ? [] : parsedTicketTypes,
                         createdBy: userId,
                     });
 
