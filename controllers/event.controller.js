@@ -40,10 +40,11 @@ const createEvent = (req, res) => {
             } = req.body;
 
             // Parse stringified values (happens with FormData)
-            const parsedIsFree = typeof isFree === 'string' ? isFree === 'true' : isFree;
+            const parsedIsFree =
+                typeof isFree === "string" ? isFree === "true" : isFree;
             let parsedTicketTypes = [];
-            
-            if (ticketTypes && typeof ticketTypes === 'string') {
+
+            if (ticketTypes && typeof ticketTypes === "string") {
                 try {
                     parsedTicketTypes = JSON.parse(ticketTypes);
                 } catch (e) {
@@ -61,7 +62,10 @@ const createEvent = (req, res) => {
             }
 
             // Validate ticket types if event is not free
-            if (!parsedIsFree && (!parsedTicketTypes || parsedTicketTypes.length === 0)) {
+            if (
+                !parsedIsFree &&
+                (!parsedTicketTypes || parsedTicketTypes.length === 0)
+            ) {
                 return res.status(400).json({
                     message: "Ticket types are required for paid events",
                 });
@@ -146,7 +150,7 @@ const getAllEvents = (req, res) => {
 };
 
 const getEventById = (req, res) => {
-    const eventId = req.params.id || req.query.id || req.query.eventId;
+    const eventId = req.params.id;
 
     if (!eventId) {
         return res.status(400).json({
@@ -170,6 +174,11 @@ const getEventById = (req, res) => {
         })
         .catch((err) => {
             console.error(err);
+            if (err.name === "CastError") {
+                return res.status(400).json({
+                    message: "Invalid event ID",
+                });
+            }
             return res.status(500).json({
                 message: "Error retrieving event",
                 error: err.message,
@@ -177,4 +186,47 @@ const getEventById = (req, res) => {
         });
 };
 
-module.exports = { createEvent, getAllEvents, getEventById };
+const getEventsByUserId = (req, res) => {
+    const userId = req.params.userId || req.query.userId || (req.user && (req.user.id || req.user._id || req.user.userId));
+
+    if (!userId) {
+        return res.status(400).json({
+            message: "User ID is required",
+        });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    return Event.find({ createdBy: userId })
+        .populate("createdBy", "firstName lastName profilePic")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .then((events) => {
+            return Event.countDocuments({ createdBy: userId }).then((total) => {
+                return res.status(200).json({
+                    message: "Events retrieved successfully",
+                    events,
+                    currentPage: page,
+                    totalPages: Math.ceil(total / limit),
+                    totalEvents: total,
+                });
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            if (err.name === "CastError") {
+                return res.status(400).json({
+                    message: "Invalid user ID",
+                });
+            }
+            return res.status(500).json({
+                message: "Error retrieving events",
+                error: err.message,
+            });
+        });
+};
+
+module.exports = { createEvent, getAllEvents, getEventById, getEventsByUserId };
