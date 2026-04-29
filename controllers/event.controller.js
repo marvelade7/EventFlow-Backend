@@ -93,4 +93,66 @@ const createEvent = (req, res) => {
         });
 };
 
-module.exports = { createEvent };
+const getAllEvents = (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    return Event.find()
+        .populate("createdBy", "firstName lastName profilePic")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .then((events) => {
+            return Event.countDocuments().then((total) => {
+                return res.status(200).json({
+                    message: "Events retrieved successfully",
+                    events,
+                    currentPage: page,
+                    totalPages: Math.ceil(total / limit),
+                    totalEvents: total,
+                });
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            return res.status(500).json({
+                message: "Error retrieving events",
+                error: err.message,
+            });
+        });
+};
+
+const getEventById = (req, res) => {
+    const eventId = req.params.id || req.query.id || req.query.eventId;
+
+    if (!eventId) {
+        return res.status(400).json({
+            message: "Event id is required",
+        });
+    }
+
+    return Event.findById(eventId)
+        .populate("createdBy", "firstName lastName profilePic")
+        .then((event) => {
+            if (!event) {
+                return res.status(404).json({
+                    message: "Event not found",
+                });
+            }
+
+            return res.status(200).json({
+                message: "Event retrieved successfully",
+                event,
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            return res.status(500).json({
+                message: "Error retrieving event",
+                error: err.message,
+            });
+        });
+};
+
+module.exports = { createEvent, getAllEvents, getEventById };
