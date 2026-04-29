@@ -187,7 +187,10 @@ const getEventById = (req, res) => {
 };
 
 const getEventsByUserId = (req, res) => {
-    const userId = req.params.userId || req.query.userId || (req.user && (req.user.id || req.user._id || req.user.userId));
+    const userId =
+        req.params.userId ||
+        req.query.userId ||
+        (req.user && (req.user.id || req.user._id || req.user.userId));
 
     if (!userId) {
         return res.status(400).json({
@@ -229,4 +232,88 @@ const getEventsByUserId = (req, res) => {
         });
 };
 
-module.exports = { createEvent, getAllEvents, getEventById, getEventsByUserId };
+const updateEvent = (req, res) => {
+    const userId = req.user && (req.user.id || req.user._id || req.user.userId);
+    const eventId = req.params.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+    }
+
+    Event.findByIdAndUpdate(eventId, { $set: req.body }, { new: true })
+        .then((updatedEvent) => {
+            if (!updatedEvent) {
+                return res.status(404).json({ message: "Event not found" });
+            }
+
+            if (updatedEvent.createdBy.toString() !== userId) {
+                return res.status(403).json({ message: "Forbidden" });
+            }
+
+            return res.status(200).json({
+                message: "Event updated successfully",
+                event: updatedEvent,
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            if (err.name === "CastError") {
+                return res.status(400).json({ message: "Invalid event ID" });
+            }
+            return res.status(500).json({
+                message: "Error updating event",
+                error: err.message,
+            });
+        });
+};
+
+const deleteEvent = (req, res) => {
+    const userId = req.user && (req.user.id || req.user._id || req.user.userId);
+    const eventId = req.params.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+    }
+
+    Event.findByIdAndDelete(eventId)
+        .then((deletedEvent) => {
+            if (!deletedEvent) {
+                return res.status(404).json({ message: "Event not found" });
+            }
+
+            if (deletedEvent.createdBy.toString() !== userId) {
+                return res.status(403).json({ message: "Forbidden" });
+            }
+
+            return res.status(200).json({
+                message: "Event deleted successfully",
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            if (err.name === "CastError") {
+                return res.status(400).json({ message: "Invalid event ID" });
+            }
+            return res.status(500).json({
+                message: "Error deleting event",
+                error: err.message,
+            });
+        });
+};
+
+module.exports = {
+    createEvent,
+    getAllEvents,
+    getEventById,
+    getEventsByUserId,
+    updateEvent,
+    deleteEvent,
+};
