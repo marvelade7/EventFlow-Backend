@@ -150,7 +150,7 @@ const getAllEvents = (req, res) => {
 };
 
 const getEventById = (req, res) => {
-    const eventId = req.params.id;
+    const eventId = req.params.eventId;
 
     if (!eventId) {
         return res.status(400).json({
@@ -234,7 +234,8 @@ const getEventsByUserId = (req, res) => {
 
 const updateEvent = (req, res) => {
     const userId = req.user && (req.user.id || req.user._id || req.user.userId);
-    const eventId = req.params.id;
+    const eventId = req.params.eventId;
+    // console.log("Updating event with ID:", eventId, "by user:", userId);
 
     if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -244,14 +245,33 @@ const updateEvent = (req, res) => {
         return res.status(400).json({ message: "Event ID is required" });
     }
 
-    Event.findByIdAndUpdate(eventId, { $set: req.body }, { new: true })
-        .then((updatedEvent) => {
-            if (!updatedEvent) {
+    return Event.findById(eventId)
+        .then((event) => {
+            if (!event) {
                 return res.status(404).json({ message: "Event not found" });
             }
 
-            if (updatedEvent.createdBy.toString() !== userId) {
+            if (event.createdBy.toString() !== userId) {
                 return res.status(403).json({ message: "Forbidden" });
+            }
+
+            const updateData = { ...req.body };
+            // console.log('Updated Data: ' + JSON.stringify(updateData));
+
+            if (req.file) {
+                return uploadToCloudinary(req.file.buffer, "event_banners").then(
+                    (result) => {
+                        updateData.bannerImage = result.secure_url;
+                        return Event.findByIdAndUpdate(eventId, updateData, { new: true });
+                    },
+                );
+            } else {
+                return Event.findByIdAndUpdate(eventId, updateData, { new: true });
+            }
+        })
+        .then((updatedEvent) => {
+            if (!updatedEvent) {
+                return res.status(404).json({ message: "Event not found" });
             }
 
             return res.status(200).json({
@@ -268,12 +288,12 @@ const updateEvent = (req, res) => {
                 message: "Error updating event",
                 error: err.message,
             });
-        });
+        });     
 };
 
 const deleteEvent = (req, res) => {
     const userId = req.user && (req.user.id || req.user._id || req.user.userId);
-    const eventId = req.params.id;
+    const eventId = req.params.eventId;
 
     if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
