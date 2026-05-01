@@ -37,6 +37,7 @@ const eventSchema = new mongoose.Schema(
             },
             address: String,
             city: String,
+            state: String,
             country: String,
         },
         isFree: {

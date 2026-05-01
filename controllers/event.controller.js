@@ -33,6 +33,7 @@ const createEvent = (req, res) => {
                 venue,
                 address,
                 city,
+                state,
                 country,
                 isFree,
                 ticketTypes,
