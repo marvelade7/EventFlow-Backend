@@ -258,15 +258,63 @@ const updateEvent = (req, res) => {
             const updateData = { ...req.body };
             // console.log('Updated Data: ' + JSON.stringify(updateData));
 
-            if (req.file) {
-                return uploadToCloudinary(req.file.buffer, "event_banners").then(
-                    (result) => {
-                        updateData.bannerImage = result.secure_url;
-                        return Event.findByIdAndUpdate(eventId, updateData, { new: true });
-                    },
+            if (typeof updateData.isFree === "string") {
+                updateData.isFree = updateData.isFree === "true";
+            }
+
+            if (
+                updateData.ticketTypes &&
+                typeof updateData.ticketTypes === "string"
+            ) {
+                try {
+                    updateData.ticketTypes = JSON.parse(updateData.ticketTypes);
+                } catch (e) {
+                    updateData.ticketTypes = [];
+                }
+            }
+
+            if (
+                updateData.location &&
+                typeof updateData.location === "string"
+            ) {
+                try {
+                    updateData.location = JSON.parse(updateData.location);
+                } catch (e) {
+                    updateData.location = {};
+                }
+            }
+
+            if (updateData.startDate && updateData.startTime) {
+                updateData.startDateTime = new Date(
+                    `${updateData.startDate}T${updateData.startTime}`,
                 );
+            }
+
+            if (updateData.endDate && updateData.endTime) {
+                updateData.endDateTime = new Date(
+                    `${updateData.endDate}T${updateData.endTime}`,
+                );
+            }
+
+            delete updateData.startDate;
+            delete updateData.startTime;
+            delete updateData.endDate;
+            delete updateData.endTime;
+
+            if (req.file) {
+                return uploadToCloudinary(
+                    req.file.buffer,
+                    "event_banners",
+                ).then((result) => {
+                    updateData.bannerImage = result.secure_url;
+                    return Event.findByIdAndUpdate(eventId, updateData, {
+                        new: true,
+                    });
+                });
             } else {
-                return Event.findByIdAndUpdate(eventId, updateData, { new: true });
+                return Event.findByIdAndUpdate(eventId, updateData, {
+                    new: true,
+                });
             }
         })
         .then((updatedEvent) => {
@@ -288,7 +336,7 @@ const updateEvent = (req, res) => {
                 message: "Error updating event",
                 error: err.message,
             });
-        });     
+        });
 };
 
 const deleteEvent = (req, res) => {
