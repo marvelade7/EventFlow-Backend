@@ -10,6 +10,7 @@ const userRoutes = require("./routes/user.route");
 const eventRoutes = require("./routes/event.route");
 const paymentRoutes = require("./routes/payment.route");
 const bookingRoutes = require("./routes/bookings.route");
+const availabilityRoutes = require("./routes/availability.route");
 
 mongoose
     .connect(URI)

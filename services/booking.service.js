@@ -1,4 +1,4 @@
-const Event = require("../models/Event");
+const Event = require("../models/event.model");
 const Booking = require("../models/bookings.model");
 const { generateTicketID } = require("../utils/ticketGenerator");
 
