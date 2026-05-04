@@ -8,6 +8,8 @@ const URI = process.env.MONGO_URI;
 
 const userRoutes = require("./routes/user.route");
 const eventRoutes = require("./routes/event.route");
+const paymentRoutes = require("./routes/payment.route");
+const bookingRoutes = require("./routes/bookings.route");
 
 mongoose
     .connect(URI)
@@ -26,6 +28,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use('/api/available', availabilityRoutes);
 
 app.get("/", (req, res) => {
     res.send("Backend is running");

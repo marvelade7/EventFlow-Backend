@@ -353,18 +353,20 @@ const deleteEvent = (req, res) => {
         return res.status(400).json({ message: "Event ID is required" });
     }
 
-    Event.findByIdAndDelete(eventId)
-        .then((deletedEvent) => {
-            if (!deletedEvent) {
+    Event.findById(eventId)
+        .then((event) => {
+            if (!event) {
                 return res.status(404).json({ message: "Event not found" });
             }
 
-            if (deletedEvent.createdBy.toString() !== userId) {
+            if (event.createdBy.toString() !== userId) {
                 return res.status(403).json({ message: "Forbidden" });
             }
 
-            return res.status(200).json({
-                message: "Event deleted successfully",
+            return Event.findByIdAndDelete(eventId).then(() => {
+                return res.status(200).json({
+                    message: "Event deleted successfully",
+                });
             });
         })
         .catch((err) => {
