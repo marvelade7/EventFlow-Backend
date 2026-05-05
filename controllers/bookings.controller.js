@@ -43,9 +43,14 @@ const initializePayment = (req, res) => {
     const { eventId, ticketTypeName } = req.body;
 
     const reference = crypto.randomBytes(6).toString("hex");
+    const userId = req.user && (req.user.id || req.user._id || req.user.userId);
+
+    if (!userId) {
+        return res.status(401).json({ message: "User ID not found in token" });
+    }
 
     Payment.create({
-        user: req.user._id,
+        user: userId,
         event: eventId,
         ticketType: ticketTypeName,
         reference,

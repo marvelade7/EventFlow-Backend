@@ -381,6 +381,18 @@ const deleteEvent = (req, res) => {
         });
 };
 
+const getTotalEvents = (req, res) => {
+    Event.countDocuments()
+        .then((total) => {
+            return res.json({ total });
+        })
+        .catch((err) => {
+            return res.json({
+                error: err.message,
+            });
+        });
+};
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -388,4 +400,5 @@ module.exports = {
     getEventsByUserId,
     updateEvent,
     deleteEvent,
+    getTotalEvents
 };
