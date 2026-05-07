@@ -1,7 +1,9 @@
 const Event = require("../models/event.model");
 const Booking = require("../models/bookings.model");
+const User = require("../models/user.model");
 const { generateTicketID } = require("../utils/ticketGenerator");
 const QRcode = require("qrcode");
+const crypto = require("crypto");
 
 const handleBooking = (payment) => {
     const quantity = Math.max(1, Number(payment.quantity || 1));
@@ -59,35 +61,61 @@ const handleBooking = (payment) => {
                 payment.ticketType ||
                 (event.ticketTypes[0] && event.ticketTypes[0].name) ||
                 "Free";
-            const bookings = Array.from(
-                { length: quantity },
-                () =>
-                    new Booking({
-                        user: payment.user,
-                        event: payment.event,
-                        ticketTypeName: ticketName,
-                        paymentStatus: "paid",
-                        paymentReference: payment.reference,
-                        ticketCode: generateTicketID(),
-                        qrCode: null,
-                        expiresAt: event.endDateTime || undefined,
-                    }),
-            );
 
-            // Generate QR code Data URLs for each booking and save
-            return Promise.all(
-                bookings.map((booking) => {
-                    return QRcode.toDataURL(booking.ticketCode)
-                        .then((dataUrl) => {
-                            booking.qrCode = dataUrl;
-                            return booking.save();
-                        })
-                        .catch((err) => {
-                            booking.qrCode = null;
-                            return booking.save();
-                        });
-                }),
-            );
+            // Load user details to include in the QR payload
+            return User.findById(payment.user)
+                .then((user) => {
+                    const bookings = Array.from(
+                        { length: quantity },
+                        () =>
+                            new Booking({
+                                user: payment.user,
+                                event: payment.event,
+                                ticketTypeName: ticketName,
+                                paymentStatus: "paid",
+                                paymentReference: payment.reference,
+                                ticketCode: generateTicketID(),
+                                qrCode: null,
+                                expiresAt: event.endDateTime || undefined,
+                            }),
+                    );
+
+                    // Generate QR code Data URLs for each booking and save
+                    return Promise.all(
+                        bookings.map((booking) => {
+                            const userName = (user && (user.firstName || user.name)) ? `${user.firstName || user.name}${user.lastName ? ` ${user.lastName}` : ''}` : 'User';
+                            const userEmail = (user && user.email) || 'N/A';
+                            const eventTitle = event.title || 'Event';
+                            const checkedIn = booking.status === 'checked-in' ? 'Yes' : 'No';
+
+                            const ticketData = {
+                                ticketCode: booking.ticketCode,
+                                userName,
+                                userEmail,
+                                event: eventTitle,
+                                checkedIn,
+                            };
+
+                            const payloadString = JSON.stringify(ticketData);
+                            const secret = process.env.QR_HMAC_SECRET || "dev_secret";
+                            const signature = crypto.createHmac("sha256", secret).update(payloadString).digest("hex");
+                            const envelope = { payload: ticketData, signature };
+                            const envelopeString = JSON.stringify(envelope);
+
+                            return QRcode.toDataURL(envelopeString)
+                                .then((dataUrl) => {
+                                    booking.qrCode = dataUrl;
+                                    booking.qrSignature = signature;
+                                    return booking.save();
+                                })
+                                .catch((err) => {
+                                    booking.qrCode = null;
+                                    booking.qrSignature = null;
+                                    return booking.save();
+                                });
+                        }),
+                    );
+                });
         });
 };
 

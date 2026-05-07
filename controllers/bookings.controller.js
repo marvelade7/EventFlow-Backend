@@ -123,7 +123,7 @@ const simulatePayment = (req, res) => {
                 return res.status(404).json({ message: "Payment not found" });
             }
 
-            return Booking.find({ paymentReference: reference })
+                    return Booking.find({ paymentReference: reference })
                 .sort({ createdAt: 1 })
                 .populate({
                     path: "event",
@@ -132,6 +132,7 @@ const simulatePayment = (req, res) => {
                         select: "firstName lastName fullName name profilePic",
                     },
                 })
+                .populate({ path: "user", select: "firstName lastName email" })
                 .then((existingBookings) => {
                     if (existingBookings.length > 0) {
                         return res.status(200).json({
@@ -151,7 +152,8 @@ const simulatePayment = (req, res) => {
                                     path: "createdBy",
                                     select: "firstName lastName fullName name profilePic",
                                 },
-                            }))
+                            })
+                            .populate({ path: "user", select: "firstName lastName email" }))
                         .then((bookings) => {
                             bookings.forEach((booking) => {
                                 sendUserEmail(booking);
@@ -184,7 +186,70 @@ const getMyBookings = (req, res) => {
                 select: "firstName lastName fullName name profilePic",
             },
         })
+        .populate({ path: "user", select: "firstName lastName email" })
         .then((bookings) => res.status(200).json({ bookings }))
+        .catch((err) => res.status(500).json({ message: err.message }));
+};
+
+const verifyQr = (req, res) => {
+    // Accept either { envelope } or { payload, signature }
+    const { envelope, payload, signature } = req.body || {};
+
+    let parsedPayload = payload;
+    let sig = signature;
+
+    if (envelope) {
+        let env = envelope;
+        if (typeof env === 'string') {
+            try {
+                env = JSON.parse(env);
+            } catch (e) {
+                return res.status(400).json({ message: 'Invalid envelope JSON' });
+            }
+        }
+
+        parsedPayload = env.payload;
+        sig = env.signature;
+    }
+
+    if (!parsedPayload || !sig) {
+        return res.status(400).json({ message: 'Payload and signature are required' });
+    }
+
+    const payloadString = typeof parsedPayload === 'string' ? parsedPayload : JSON.stringify(parsedPayload);
+    const secret = process.env.QR_HMAC_SECRET || 'dev_secret';
+    const computed = crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
+
+    if (computed !== sig) {
+        return res.status(400).json({ message: 'Invalid signature' });
+    }
+
+    const ticketCode = parsedPayload.ticketCode;
+    if (!ticketCode) {
+        return res.status(400).json({ message: 'ticketCode missing from payload' });
+    }
+
+    return Booking.findOne({ ticketCode })
+        .populate({ path: 'user', select: 'firstName lastName email' })
+        .populate({ path: 'event', select: 'title' })
+        .then((booking) => {
+            if (!booking) {
+                return res.status(404).json({ message: 'Booking not found' });
+            }
+
+            // If booking has a stored signature, verify it matches
+            if (booking.qrSignature && booking.qrSignature !== sig) {
+                return res.status(400).json({ message: 'Signature mismatch with stored booking' });
+            }
+
+            // Mark as checked-in if not already
+            if (booking.status !== 'checked-in') {
+                booking.status = 'checked-in';
+                return booking.save().then((b) => res.status(200).json({ message: 'Verified and checked-in', booking: b }));
+            }
+
+            return res.status(200).json({ message: 'Already checked-in', booking });
+        })
         .catch((err) => res.status(500).json({ message: err.message }));
 };
 
@@ -193,4 +258,5 @@ module.exports = {
     initializePayment,
     simulatePayment,
     getMyBookings,
+    verifyQr,
 };
