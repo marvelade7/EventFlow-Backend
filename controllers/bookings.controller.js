@@ -4,11 +4,6 @@ const Payment = require("../models/payment.model");
 const { handleBooking } = require("../services/booking.service");
 const { sendUserEmail, sendOrganizerEmail } = require("../utils/email");
 const crypto = require("crypto");
-const QRcode = require("qrcode");
-
-
-
-
 
 const getRequestValue = (req, key) => req.body?.[key] ?? req.query?.[key];
 
@@ -76,24 +71,42 @@ const initializePayment = (req, res) => {
         return res.status(401).json({ message: "User ID not found in token" });
     }
 
-    if (!eventId || !ticketTypeName) {
-        return res.status(400).json({ message: "Event and ticket type are required" });
+    if (!eventId) {
+        return res.status(400).json({ message: "Event is required" });
     }
 
-    return Payment.create({
-        user: userId,
-        event: eventId,
-        ticketType: ticketTypeName,
-        quantity,
-        reference,
-        status: "pending",
-    })
-        .then((payment) => res.status(200).json({
-            reference,
-            message: "Payment initialized",
-            paymentId: payment._id,
-            quantity,
-        }))
+    // If ticket type isn't provided, check the event to see if it's free
+    return Event.findById(eventId)
+        .then((event) => {
+            if (!event) {
+                return res.status(404).json({ message: "Event not found" });
+            }
+
+            let finalTicketType = ticketTypeName;
+            if (!finalTicketType) {
+                if (event.isFree) {
+                    finalTicketType = (event.ticketTypes && event.ticketTypes[0] && event.ticketTypes[0].name) || 'Free';
+                } else {
+                    return res.status(400).json({ message: "Ticket type is required for paid events" });
+                }
+            }
+
+            return Payment.create({
+                user: userId,
+                event: eventId,
+                ticketType: finalTicketType,
+                quantity,
+                reference,
+                status: "pending",
+            })
+                .then((payment) => res.status(200).json({
+                    reference,
+                    message: "Payment initialized",
+                    paymentId: payment._id,
+                    quantity,
+                }))
+                .catch((err) => res.status(500).json({ message: err.message }));
+        })
         .catch((err) => res.status(500).json({ message: err.message }));
 };
 

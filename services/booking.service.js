@@ -11,35 +11,70 @@ const handleBooking = (payment) => {
                 throw new Error("Event not found");
             }
 
-            const ticket = event.ticketTypes.find((t) => t.name === payment.ticketType);
+            let ticket = event.ticketTypes.find(
+                (t) => t.name === payment.ticketType,
+            );
 
+            // If ticket type not found, allow booking for free events by creating
+            // a placeholder ticket object. For paid events, throw an error.
+            const ticketFromEvent = Boolean(ticket);
             if (!ticket) {
-                throw new Error("Ticket type not found");
+                if (event.isFree) {
+                    ticket = {
+                        name:
+                            payment.ticketType ||
+                            (event.ticketTypes[0] &&
+                                event.ticketTypes[0].name) ||
+                            "Free",
+                        quantity: Number.POSITIVE_INFINITY,
+                        sold: 0,
+                    };
+                } else {
+                    throw new Error("Ticket type not found");
+                }
             }
 
-            const available = Number(ticket.quantity || 0) - Number(ticket.sold || 0);
+            const available =
+                Number(ticket.quantity || 0) - Number(ticket.sold || 0);
 
             if (available < quantity) {
                 throw new Error("Sold out");
             }
 
-            ticket.sold += quantity;
-            return event.save().then(() => {
-                const bookings = Array.from({ length: quantity }, () => (
+            // Only increment sold on the real ticket stored on the event document
+            if (ticketFromEvent) {
+                ticket.sold += quantity;
+                return event.save().then(() => event);
+            }
+
+            // For free events with a placeholder ticket, skip saving the event
+            // and proceed to create bookings immediately.
+            // Return the event so the next then() has access to it.
+            return Promise.resolve(event);
+        })
+        .then((event) => {
+            const ticketName =
+                payment.ticketType ||
+                (event.ticketTypes[0] && event.ticketTypes[0].name) ||
+                "Free";
+            const bookings = Array.from(
+                { length: quantity },
+                () =>
                     new Booking({
                         user: payment.user,
                         event: payment.event,
-                        ticketTypeName: payment.ticketType,
+                        ticketTypeName: ticketName,
                         paymentStatus: "paid",
                         paymentReference: payment.reference,
                         ticketCode: generateTicketID(),
                         qrCode: null,
                         expiresAt: event.endDateTime || undefined,
-                    })
-                ));
+                    }),
+            );
 
-                // Generate QR code Data URLs for each booking and save
-                return Promise.all(bookings.map((booking) => {
+            // Generate QR code Data URLs for each booking and save
+            return Promise.all(
+                bookings.map((booking) => {
                     return QRcode.toDataURL(booking.ticketCode)
                         .then((dataUrl) => {
                             booking.qrCode = dataUrl;
@@ -49,8 +84,8 @@ const handleBooking = (payment) => {
                             booking.qrCode = null;
                             return booking.save();
                         });
-                }));
-            });
+                }),
+            );
         });
 };
 
