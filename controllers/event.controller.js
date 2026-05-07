@@ -1,5 +1,6 @@
 const Event = require("../models/event.model");
 const Customer = require("../models/user.model");
+const Booking = require("../models/bookings.model");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 
 const createEvent = (req, res) => {
@@ -393,6 +394,28 @@ const getTotalEvents = (req, res) => {
         });
 };
 
+const getDashboardStats = (req, res) => {
+    return Promise.all([
+        Event.countDocuments(),
+        Booking.countDocuments(),
+        Booking.countDocuments({ status: "checked-in" }),
+    ])
+        .then(([totalEvents, activeTickets, eventsAttended]) => {
+            return res.status(200).json({
+                totalEvents,
+                activeTickets,
+                eventsAttended,
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            return res.status(500).json({
+                message: "Error retrieving dashboard stats",
+                error: err.message,
+            });
+        });
+};
+
 module.exports = {
     createEvent,
     getAllEvents,
@@ -400,5 +423,6 @@ module.exports = {
     getEventsByUserId,
     updateEvent,
     deleteEvent,
-    getTotalEvents
+    getTotalEvents,
+    getDashboardStats,
 };

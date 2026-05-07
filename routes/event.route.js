@@ -7,6 +7,7 @@ const {
     deleteEvent,
     updateEvent,
     getTotalEvents,
+    getDashboardStats,
 } = require("../controllers/event.controller");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
@@ -23,6 +24,7 @@ router.get("/user/:userId/events", getEventsByUserId);
 router.get("/get-events/:eventId", getEventById);
 router.get("/get-events", getAllEvents);
 router.get("/get-events-by-user", authMiddleware, getEventsByUserId);
+router.get("/dashboard-stats", authMiddleware, getDashboardStats);
 router.patch(
     "/update-event/:eventId",
     authMiddleware,
