@@ -1,15 +1,36 @@
 const Event = require("../models/event.model");
 const Booking = require("../models/bookings.model");
 const Payment = require("../models/payment.model");
-const { generateTicketID } = require("../utils/ticketGenerator");
 const { handleBooking } = require("../services/booking.service");
 const { sendUserEmail, sendOrganizerEmail } = require("../utils/email");
 const crypto = require("crypto");
 
-const checkAvailability = (req, res) => {
-    const { eventId, ticketTypeName } = req.body;
+const getRequestValue = (req, key) => req.body?.[key] ?? req.query?.[key];
 
-    Event.findById(eventId)
+const getUserIdFromRequest = (req) => (
+    req.user && (req.user.id || req.user._id || req.user.userId)
+);
+
+const normalizeQuantity = (value) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+        return 1;
+    }
+
+    return Math.floor(parsed);
+};
+
+const checkAvailability = (req, res) => {
+    const eventId = getRequestValue(req, "eventId") || getRequestValue(req, "event");
+    const ticketTypeName = getRequestValue(req, "ticketTypeName") || getRequestValue(req, "ticketType");
+
+    if (!eventId || !ticketTypeName) {
+        return res.status(400).json({
+            message: "Event ID and ticket type are required",
+        });
+    }
+
+    return Event.findById(eventId)
         .then((event) => {
             if (!event) {
                 return res.status(404).json({ message: "Event not found" });
@@ -25,76 +46,133 @@ const checkAvailability = (req, res) => {
                     .json({ message: "Ticket type not found" });
             }
 
-            const availableTickets = ticketType.quantity - ticketType.sold;
+            const availableTickets = Number(ticketType.quantity || 0) - Number(ticketType.sold || 0);
+
             return res.status(200).json({
                 available: availableTickets > 0,
                 remaining: availableTickets,
             });
         })
-        .catch((err) => {
-            return res.status(500).json({
-                message: "Error occurred while checking availability",
-                error: err.message,
-            });
-        });
+        .catch((err) => res.status(500).json({
+            message: "Error occurred while checking availability",
+            error: err.message,
+        }));
 };
 
 const initializePayment = (req, res) => {
-    const { eventId, ticketTypeName } = req.body;
+    const eventId = getRequestValue(req, "eventId") || getRequestValue(req, "event");
+    const ticketTypeName = getRequestValue(req, "ticketTypeName") || getRequestValue(req, "ticketType");
+    const quantity = normalizeQuantity(getRequestValue(req, "quantity"));
 
     const reference = crypto.randomBytes(6).toString("hex");
-    const userId = req.user && (req.user.id || req.user._id || req.user.userId);
+    const userId = getUserIdFromRequest(req);
 
     if (!userId) {
         return res.status(401).json({ message: "User ID not found in token" });
     }
 
-    Payment.create({
+    if (!eventId || !ticketTypeName) {
+        return res.status(400).json({ message: "Event and ticket type are required" });
+    }
+
+    return Payment.create({
         user: userId,
         event: eventId,
         ticketType: ticketTypeName,
+        quantity,
         reference,
         status: "pending",
     })
-        .then((payment) => {
-            return res.status(200).json({
-                reference,
-                message: "Payment initialized",
-                paymentId: payment._id,
-            });
-        })
-        .catch((err) => {
-            return res.status(500).json({ message: err.message });
-        });
+        .then((payment) => res.status(200).json({
+            reference,
+            message: "Payment initialized",
+            paymentId: payment._id,
+            quantity,
+        }))
+        .catch((err) => res.status(500).json({ message: err.message }));
 };
 
 const simulatePayment = (req, res) => {
-    const { reference } = req.body;
+    const reference = getRequestValue(req, "reference");
 
-    Payment.findOne({ reference })
-        .then(payment => {
+    if (!reference) {
+        return res.status(400).json({ message: "Payment reference is required" });
+    }
+
+    return Payment.findOne({ reference })
+        .then((payment) => {
             if (!payment) {
                 return res.status(404).json({ message: "Payment not found" });
             }
 
-            payment.status = "success";
-            return payment.save();
+            return Booking.find({ paymentReference: reference })
+                .sort({ createdAt: 1 })
+                .populate({
+                    path: "event",
+                    populate: {
+                        path: "createdBy",
+                        select: "firstName lastName fullName name profilePic",
+                    },
+                })
+                .then((existingBookings) => {
+                    if (existingBookings.length > 0) {
+                        return res.status(200).json({
+                            message: "Payment already processed",
+                            bookings: existingBookings,
+                        });
+                    }
+
+                    payment.status = "success";
+                    return payment.save()
+                        .then(() => handleBooking(payment))
+                        .then(() => Booking.find({ paymentReference: reference })
+                            .sort({ createdAt: 1 })
+                            .populate({
+                                path: "event",
+                                populate: {
+                                    path: "createdBy",
+                                    select: "firstName lastName fullName name profilePic",
+                                },
+                            }))
+                        .then((bookings) => {
+                            bookings.forEach((booking) => {
+                                sendUserEmail(booking);
+                                sendOrganizerEmail(booking);
+                            });
+
+                            return res.status(201).json({
+                                message: "Booking confirmed",
+                                bookings,
+                            });
+                        });
+                });
         })
-        .then(payment => {
-            return handleBooking(payment);
+        .catch((err) => res.status(500).json({ message: err.message }));
+};
+
+const getMyBookings = (req, res) => {
+    const userId = getUserIdFromRequest(req);
+
+    if (!userId) {
+        return res.status(401).json({ message: "User ID not found in token" });
+    }
+
+    return Booking.find({ user: userId })
+        .sort({ createdAt: -1 })
+        .populate({
+            path: "event",
+            populate: {
+                path: "createdBy",
+                select: "firstName lastName fullName name profilePic",
+            },
         })
-        .then(booking => {
-            sendUserEmail(booking.user, booking.event, booking.ticketCode);
-            sendOrganizerEmail(booking.event.organizer, booking.event, booking.ticketCode);
-            return res.status(201).json(booking);
-        })
-        .catch(err => {
-            return res.status(500).json({ message: err.message });
-        });
+        .then((bookings) => res.status(200).json({ bookings }))
+        .catch((err) => res.status(500).json({ message: err.message }));
 };
 
 module.exports = {
     checkAvailability,
     initializePayment,
     simulatePayment,
+    getMyBookings,
 };

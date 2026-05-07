@@ -7,6 +7,11 @@ const paymentSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    quantity: {
+        type: Number,
+        default: 1,
+        min: 1,
+    },
     reference: {
         type: String,
         required: true,
