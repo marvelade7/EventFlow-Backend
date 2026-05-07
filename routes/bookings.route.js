@@ -4,6 +4,7 @@ const router = express.Router();
 const {
     simulatePayment,
     getMyBookings,
+    getMyEventBookings,
     verifyQr,
 } = require("../controllers/bookings.controller");
 
@@ -12,6 +13,7 @@ const auth = require("../middlewares/auth.middleware");
 router.use(auth);
 
 router.get("/my-bookings", getMyBookings);
+router.get("/my-event-bookings", getMyEventBookings);
 router.post("/payment/success", simulatePayment);
 router.post("/verify-qr", verifyQr);
 

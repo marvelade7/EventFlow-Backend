@@ -191,6 +191,37 @@ const getMyBookings = (req, res) => {
         .catch((err) => res.status(500).json({ message: err.message }));
 };
 
+const getMyEventBookings = (req, res) => {
+    const userId = getUserIdFromRequest(req);
+
+    if (!userId) {
+        return res.status(401).json({ message: "User ID not found in token" });
+    }
+
+    return Event.find({ createdBy: userId })
+        .select("_id")
+        .then((events) => {
+            const eventIds = events.map((event) => event._id);
+
+            if (eventIds.length === 0) {
+                return res.status(200).json({ bookings: [] });
+            }
+
+            return Booking.find({ event: { $in: eventIds } })
+                .sort({ createdAt: -1 })
+                .populate({
+                    path: "event",
+                    populate: {
+                        path: "createdBy",
+                        select: "firstName lastName fullName name profilePic",
+                    },
+                })
+                .populate({ path: "user", select: "firstName lastName email avatar profilePic name" })
+                .then((bookings) => res.status(200).json({ bookings }));
+        })
+        .catch((err) => res.status(500).json({ message: err.message }));
+};
+
 const verifyQr = (req, res) => {
     // Accept either { envelope } or { payload, signature }
     const { envelope, payload, signature } = req.body || {};
@@ -271,5 +302,6 @@ module.exports = {
     initializePayment,
     simulatePayment,
     getMyBookings,
+    getMyEventBookings,
     verifyQr,
 };
