@@ -38,7 +38,7 @@ const bookingSchema = new mongoose.Schema(
         },
         paymentReference: {
             type: String,
-            unique: true,
+            index: true,
             sparse: true,
         },
     },

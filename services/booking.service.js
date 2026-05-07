@@ -11,9 +11,11 @@ const handleBooking = (payment) => {
                 throw new Error("Event not found");
             }
 
-            let ticket = event.ticketTypes.find(
-                (t) => t.name === payment.ticketType,
-            );
+            const requestedName = (payment.ticketType || "").toString().trim().toLowerCase();
+            let ticket = (event.ticketTypes || []).find((t) => {
+                const name = (t && t.name) ? t.name.toString().trim().toLowerCase() : "";
+                return requestedName && name === requestedName;
+            });
 
             // If ticket type not found, allow booking for free events by creating
             // a placeholder ticket object. For paid events, throw an error.
