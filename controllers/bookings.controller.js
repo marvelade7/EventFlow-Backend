@@ -194,6 +194,7 @@ const getMyBookings = (req, res) => {
 const verifyQr = (req, res) => {
     // Accept either { envelope } or { payload, signature }
     const { envelope, payload, signature } = req.body || {};
+    const userId = getUserIdFromRequest(req);
 
     let parsedPayload = payload;
     let sig = signature;
@@ -229,12 +230,24 @@ const verifyQr = (req, res) => {
         return res.status(400).json({ message: 'ticketCode missing from payload' });
     }
 
+    if (!userId) {
+        return res.status(401).json({ message: 'User ID not found in token' });
+    }
+
     return Booking.findOne({ ticketCode })
         .populate({ path: 'user', select: 'firstName lastName email' })
-        .populate({ path: 'event', select: 'title' })
+        .populate({ path: 'event', select: 'title createdBy' })
         .then((booking) => {
             if (!booking) {
                 return res.status(404).json({ message: 'Booking not found' });
+            }
+
+            const eventOwnerId = booking.event && booking.event.createdBy
+                ? booking.event.createdBy.toString()
+                : null;
+
+            if (!eventOwnerId || eventOwnerId !== userId.toString()) {
+                return res.status(403).json({ message: 'Only the event owner can verify this QR code' });
             }
 
             // If booking has a stored signature, verify it matches
