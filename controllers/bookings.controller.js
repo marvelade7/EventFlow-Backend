@@ -4,6 +4,11 @@ const Payment = require("../models/payment.model");
 const { handleBooking } = require("../services/booking.service");
 const { sendUserEmail, sendOrganizerEmail } = require("../utils/email");
 const crypto = require("crypto");
+const QRcode = require("qrcode");
+
+
+
+
 
 const getRequestValue = (req, key) => req.body?.[key] ?? req.query?.[key];
 

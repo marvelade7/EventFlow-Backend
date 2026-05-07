@@ -1,6 +1,7 @@
 const Event = require("../models/event.model");
 const Booking = require("../models/bookings.model");
 const { generateTicketID } = require("../utils/ticketGenerator");
+const QRcode = require("qrcode");
 
 const handleBooking = (payment) => {
     const quantity = Math.max(1, Number(payment.quantity || 1));
@@ -32,16 +33,27 @@ const handleBooking = (payment) => {
                         paymentStatus: "paid",
                         paymentReference: payment.reference,
                         ticketCode: generateTicketID(),
-                        qrCode: "generated-later",
+                        qrCode: null,
                         expiresAt: event.endDateTime || undefined,
                     })
                 ));
 
-                return Promise.all(bookings.map((booking) => booking.save()));
+                // Generate QR code Data URLs for each booking and save
+                return Promise.all(bookings.map((booking) => {
+                    return QRcode.toDataURL(booking.ticketCode)
+                        .then((dataUrl) => {
+                            booking.qrCode = dataUrl;
+                            return booking.save();
+                        })
+                        .catch((err) => {
+                            booking.qrCode = null;
+                            return booking.save();
+                        });
+                }));
             });
         });
 };
 
 module.exports = {
-    handleBooking
+    handleBooking,
 };
