@@ -7,9 +7,8 @@ const crypto = require("crypto");
 
 const getRequestValue = (req, key) => req.body?.[key] ?? req.query?.[key];
 
-const getUserIdFromRequest = (req) => (
-    req.user && (req.user.id || req.user._id || req.user.userId)
-);
+const getUserIdFromRequest = (req) =>
+    req.user && (req.user.id || req.user._id || req.user.userId);
 
 const normalizeQuantity = (value) => {
     const parsed = Number(value);
@@ -21,8 +20,11 @@ const normalizeQuantity = (value) => {
 };
 
 const checkAvailability = (req, res) => {
-    const eventId = getRequestValue(req, "eventId") || getRequestValue(req, "event");
-    const ticketTypeName = getRequestValue(req, "ticketTypeName") || getRequestValue(req, "ticketType");
+    const eventId =
+        getRequestValue(req, "eventId") || getRequestValue(req, "event");
+    const ticketTypeName =
+        getRequestValue(req, "ticketTypeName") ||
+        getRequestValue(req, "ticketType");
 
     if (!eventId || !ticketTypeName) {
         return res.status(400).json({
@@ -46,22 +48,28 @@ const checkAvailability = (req, res) => {
                     .json({ message: "Ticket type not found" });
             }
 
-            const availableTickets = Number(ticketType.quantity || 0) - Number(ticketType.sold || 0);
+            const availableTickets =
+                Number(ticketType.quantity || 0) - Number(ticketType.sold || 0);
 
             return res.status(200).json({
                 available: availableTickets > 0,
                 remaining: availableTickets,
             });
         })
-        .catch((err) => res.status(500).json({
-            message: "Error occurred while checking availability",
-            error: err.message,
-        }));
+        .catch((err) =>
+            res.status(500).json({
+                message: "Error occurred while checking availability",
+                error: err.message,
+            }),
+        );
 };
 
 const initializePayment = (req, res) => {
-    const eventId = getRequestValue(req, "eventId") || getRequestValue(req, "event");
-    const ticketTypeName = getRequestValue(req, "ticketTypeName") || getRequestValue(req, "ticketType");
+    const eventId =
+        getRequestValue(req, "eventId") || getRequestValue(req, "event");
+    const ticketTypeName =
+        getRequestValue(req, "ticketTypeName") ||
+        getRequestValue(req, "ticketType");
     const quantity = normalizeQuantity(getRequestValue(req, "quantity"));
 
     const reference = crypto.randomBytes(6).toString("hex");
@@ -85,9 +93,15 @@ const initializePayment = (req, res) => {
             let finalTicketType = ticketTypeName;
             if (!finalTicketType) {
                 if (event.isFree) {
-                    finalTicketType = (event.ticketTypes && event.ticketTypes[0] && event.ticketTypes[0].name) || 'Free';
+                    finalTicketType =
+                        (event.ticketTypes &&
+                            event.ticketTypes[0] &&
+                            event.ticketTypes[0].name) ||
+                        "Free";
                 } else {
-                    return res.status(400).json({ message: "Ticket type is required for paid events" });
+                    return res.status(400).json({
+                        message: "Ticket type is required for paid events",
+                    });
                 }
             }
 
@@ -99,12 +113,14 @@ const initializePayment = (req, res) => {
                 reference,
                 status: "pending",
             })
-                .then((payment) => res.status(200).json({
-                    reference,
-                    message: "Payment initialized",
-                    paymentId: payment._id,
-                    quantity,
-                }))
+                .then((payment) =>
+                    res.status(200).json({
+                        reference,
+                        message: "Payment initialized",
+                        paymentId: payment._id,
+                        quantity,
+                    }),
+                )
                 .catch((err) => res.status(500).json({ message: err.message }));
         })
         .catch((err) => res.status(500).json({ message: err.message }));
@@ -114,7 +130,9 @@ const simulatePayment = (req, res) => {
     const reference = getRequestValue(req, "reference");
 
     if (!reference) {
-        return res.status(400).json({ message: "Payment reference is required" });
+        return res
+            .status(400)
+            .json({ message: "Payment reference is required" });
     }
 
     return Payment.findOne({ reference })
@@ -123,7 +141,7 @@ const simulatePayment = (req, res) => {
                 return res.status(404).json({ message: "Payment not found" });
             }
 
-                    return Booking.find({ paymentReference: reference })
+            return Booking.find({ paymentReference: reference })
                 .sort({ createdAt: 1 })
                 .populate({
                     path: "event",
@@ -142,18 +160,24 @@ const simulatePayment = (req, res) => {
                     }
 
                     payment.status = "success";
-                    return payment.save()
+                    return payment
+                        .save()
                         .then(() => handleBooking(payment))
-                        .then(() => Booking.find({ paymentReference: reference })
-                            .sort({ createdAt: 1 })
-                            .populate({
-                                path: "event",
-                                populate: {
-                                    path: "createdBy",
-                                    select: "firstName lastName fullName name profilePic",
-                                },
-                            })
-                            .populate({ path: "user", select: "firstName lastName email" }))
+                        .then(() =>
+                            Booking.find({ paymentReference: reference })
+                                .sort({ createdAt: 1 })
+                                .populate({
+                                    path: "event",
+                                    populate: {
+                                        path: "createdBy",
+                                        select: "firstName lastName fullName name profilePic",
+                                    },
+                                })
+                                .populate({
+                                    path: "user",
+                                    select: "firstName lastName email",
+                                }),
+                        )
                         .then((bookings) => {
                             bookings.forEach((booking) => {
                                 sendUserEmail(booking);
@@ -216,83 +240,80 @@ const getMyEventBookings = (req, res) => {
                         select: "firstName lastName fullName name profilePic",
                     },
                 })
-                .populate({ path: "user", select: "firstName lastName email avatar profilePic name" })
+                .populate({
+                    path: "user",
+                    select: "firstName lastName email avatar profilePic name",
+                })
                 .then((bookings) => res.status(200).json({ bookings }));
         })
         .catch((err) => res.status(500).json({ message: err.message }));
 };
 
 const verifyQr = (req, res) => {
-    // Accept either { envelope } or { payload, signature }
-    const { envelope, payload, signature } = req.body || {};
-    const userId = getUserIdFromRequest(req);
-
-    let parsedPayload = payload;
-    let sig = signature;
-
-    if (envelope) {
-        let env = envelope;
-        if (typeof env === 'string') {
-            try {
-                env = JSON.parse(env);
-            } catch (e) {
-                return res.status(400).json({ message: 'Invalid envelope JSON' });
-            }
-        }
-
-        parsedPayload = env.payload;
-        sig = env.signature;
+    if (!req.params || !req.params.code) {
+        return res.status(400).json({ message: "QR code is required" });
     }
 
-    if (!parsedPayload || !sig) {
-        return res.status(400).json({ message: 'Payload and signature are required' });
-    }
+    const { code } = req.params;
 
-    const payloadString = typeof parsedPayload === 'string' ? parsedPayload : JSON.stringify(parsedPayload);
-    const secret = process.env.QR_HMAC_SECRET || 'dev_secret';
-    const computed = crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
-
-    if (computed !== sig) {
-        return res.status(400).json({ message: 'Invalid signature' });
-    }
-
-    const ticketCode = parsedPayload.ticketCode;
-    if (!ticketCode) {
-        return res.status(400).json({ message: 'ticketCode missing from payload' });
-    }
-
-    if (!userId) {
-        return res.status(401).json({ message: 'User ID not found in token' });
-    }
-
-    return Booking.findOne({ ticketCode })
-        .populate({ path: 'user', select: 'firstName lastName email' })
-        .populate({ path: 'event', select: 'title createdBy' })
+    Booking.findOne({ ticketCode: code })
+        .populate({ path: "event" })
+        .populate({ path: "user" })
         .then((booking) => {
             if (!booking) {
-                return res.status(404).json({ message: 'Booking not found' });
+                return res.status(404).json({ message: "Invalid ticket" });
             }
 
-            const eventOwnerId = booking.event && booking.event.createdBy
-                ? booking.event.createdBy.toString()
-                : null;
-
-            if (!eventOwnerId || eventOwnerId !== userId.toString()) {
-                return res.status(403).json({ message: 'Only the event owner can verify this QR code' });
+            if (booking.paymentStatus !== "paid") {
+                return res.status(400).json({ message: "Ticket is not paid" });
             }
 
-            // If booking has a stored signature, verify it matches
-            if (booking.qrSignature && booking.qrSignature !== sig) {
-                return res.status(400).json({ message: 'Signature mismatch with stored booking' });
+            if (booking.checkedIn) {
+                return res
+                    .status(400)
+                    .json({
+                        message: "Ticket has already been used for check-in",
+                    });
             }
 
-            // Mark as checked-in if not already
-            if (booking.status !== 'checked-in') {
-                booking.status = 'checked-in';
-                return booking.save().then((b) => res.status(200).json({ message: 'Verified and checked-in', booking: b }));
+            if (booking.expiresAt && booking.expiresAt < new Date()) {
+                return res.status(400).json({ message: "Booking has expired" });
             }
 
-            return res.status(200).json({ message: 'Already checked-in', booking });
+            // Mark the booking as used or checked-in if needed
+            // booking.checkedIn = true;
+            // return booking.save().then(() => res.status(200).json({ message: "QR code is valid", booking }));
+
+            return res
+                .status(200)
+                .json({ message: "QR code is valid", booking });
+        })
+        .catch((err) => res.status(500).json({ message: err.message }));
+};
+
+const checkIn = (req, res) => {
+    const { ticketCode } = req.params;
+
+    Booking.findOne({ ticketCode })
+        .then((booking) => {
+            if (!booking) {
+                return res.status(404).json({ message: "Invalid Ticket" });
+            }
+
+            if (booking.checkedIn) {
+                return res.status(400).json({ message: "Already checked in" });
+            }
+
+            booking.checkedIn = true;
+            booking.checkedInAt = new Date();
+
+            return booking
+                .save()
+                .then(() =>
+                    res
+                        .status(200)
+                        .json({ message: "Check-in successful", booking }),
+                );
         })
         .catch((err) => res.status(500).json({ message: err.message }));
 };
@@ -304,4 +325,5 @@ module.exports = {
     getMyBookings,
     getMyEventBookings,
     verifyQr,
+    checkIn,
 };

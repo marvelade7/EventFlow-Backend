@@ -27,12 +27,6 @@ const bookingSchema = new mongoose.Schema(
             required: true,
             unique: true,
         },
-        qrCode: {
-            type: String,
-        },
-        qrSignature: {
-            type: String,
-        },
         ticketTypeName: {
             type: String,
         },
