@@ -250,7 +250,7 @@ const getMyEventBookings = (req, res) => {
 };
 
 const verifyQr = (req, res) => {
-    const ticketCode = req.body?.ticketCode;
+    const ticketCode = (req.body?.ticketCode || "").toString().trim().toUpperCase();
 
     if (!ticketCode) {
         return res.status(400).json({ message: "Ticket code is required" });
