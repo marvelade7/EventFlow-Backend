@@ -250,13 +250,13 @@ const getMyEventBookings = (req, res) => {
 };
 
 const verifyQr = (req, res) => {
-    if (!req.params || !req.params.code) {
-        return res.status(400).json({ message: "QR code is required" });
+    const ticketCode = req.body?.ticketCode;
+
+    if (!ticketCode) {
+        return res.status(400).json({ message: "Ticket code is required" });
     }
 
-    const { code } = req.params;
-
-    Booking.findOne({ ticketCode: code })
+    Booking.findOne({ ticketCode })
         .populate({ path: "event" })
         .populate({ path: "user" })
         .then((booking) => {
@@ -269,11 +269,9 @@ const verifyQr = (req, res) => {
             }
 
             if (booking.checkedIn) {
-                return res
-                    .status(400)
-                    .json({
-                        message: "Ticket has already been used for check-in",
-                    });
+                return res.status(400).json({
+                    message: "Ticket has already been used for check-in",
+                });
             }
 
             if (booking.expiresAt && booking.expiresAt < new Date()) {
