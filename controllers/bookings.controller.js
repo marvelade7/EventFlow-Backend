@@ -344,10 +344,11 @@ const verifyQr = (req, res) => {
 
             console.log("Already checked in check passed");
 
-            if (booking.expiresAt && booking.expiresAt < new Date()) {
-                console.log("Booking expired");
-                return res.status(400).json({ message: "Booking has expired" });
-            }
+            // Remove expiry check - organizers should be able to scan past events
+            // if (booking.expiresAt && booking.expiresAt < new Date()) {
+            //     console.log("Booking expired");
+            //     return res.status(400).json({ message: "Booking has expired" });
+            // }
 
             console.log("All checks passed. Sending success response with booking:", { ticketCode: booking.ticketCode });
 
