@@ -430,4 +430,5 @@ module.exports = {
     getMyEventBookings,
     verifyQr,
     checkIn,
+    getAllMyBookingsDebug,
 };

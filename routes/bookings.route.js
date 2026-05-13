@@ -7,6 +7,7 @@ const {
     getMyEventBookings,
     verifyQr,
     checkIn,
+    getAllMyBookingsDebug,
 } = require("../controllers/bookings.controller");
 
 const auth = require("../middlewares/auth.middleware");
@@ -14,6 +15,7 @@ const auth = require("../middlewares/auth.middleware");
 router.use(auth);
 
 router.get("/my-bookings", getMyBookings);
+router.get("/debug/my-bookings", getAllMyBookingsDebug);
 router.get("/my-event-bookings", getMyEventBookings);
 router.post("/payment/success", simulatePayment);
 router.post("/verify-qr", verifyQr);
