@@ -259,7 +259,13 @@ const verifyQr = (req, res) => {
     }
 
     Booking.findOne({ ticketCode })
-        .populate({ path: "event" })
+        .populate({
+            path: "event",
+            populate: {
+                path: "createdBy",
+                select: "_id firstName lastName"
+            }
+        })
         .populate({ path: "user" })
         .then((booking) => {
             if (!booking) {
@@ -267,7 +273,7 @@ const verifyQr = (req, res) => {
             }
 
             // Check if the scanner is the event organizer
-            if (booking.event.createdBy.toString() !== currentUserId) {
+            if (booking.event.createdBy._id.toString() !== currentUserId) {
                 return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
 
@@ -297,14 +303,20 @@ const checkIn = (req, res) => {
     const currentUserId = req.user && (req.user.id || req.user._id || req.user.userId);
 
     Booking.findOne({ ticketCode })
-        .populate({ path: "event" })
+        .populate({
+            path: "event",
+            populate: {
+                path: "createdBy",
+                select: "_id firstName lastName"
+            }
+        })
         .then((booking) => {
             if (!booking) {
                 return res.status(404).json({ message: "Invalid Ticket" });
             }
 
             // Check if the scanner is the event organizer
-            if (booking.event.createdBy.toString() !== currentUserId) {
+            if (booking.event.createdBy._id.toString() !== currentUserId) {
                 return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
 
