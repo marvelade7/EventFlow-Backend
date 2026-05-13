@@ -381,7 +381,45 @@ const checkIn = (req, res) => {
                         .json({ message: "Check-in successful", booking }),
                 );
         })
-        .catch((err) => res.status(500).json({ message: err.message }));
+        .catch((err) => {
+            console.error("checkIn error:", err);
+            res.status(500).json({ message: err.message });
+        });
+};
+
+// Debug endpoint - list all bookings for current user
+const getAllMyBookingsDebug = (req, res) => {
+    const userId = getUserIdFromRequest(req);
+
+    if (!userId) {
+        return res.status(401).json({ message: "User ID not found in token" });
+    }
+
+    return Booking.find({ user: userId })
+        .select("ticketCode paymentStatus paymentReference createdAt")
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .then((bookings) => {
+            console.log("Debug - User's bookings:", {
+                userId,
+                count: bookings.length,
+                bookings: bookings.map(b => ({
+                    ticketCode: b.ticketCode,
+                    paymentStatus: b.paymentStatus,
+                    paymentReference: b.paymentReference,
+                    createdAt: b.createdAt
+                }))
+            });
+            return res.status(200).json({
+                message: "Debug bookings",
+                count: bookings.length,
+                bookings
+            });
+        })
+        .catch((err) => {
+            console.error("getAllMyBookingsDebug error:", err);
+            res.status(500).json({ message: err.message });
+        });
 };
 
 module.exports = {
