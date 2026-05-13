@@ -266,7 +266,8 @@ const verifyQr = (req, res) => {
                 return res.status(404).json({ message: "Invalid ticket" });
             }
 
-            if (booking.user._id.toString() !== currentUserId) {
+            // Check if the scanner is the event organizer
+            if (booking.event.createdBy.toString() !== currentUserId) {
                 return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
 
@@ -284,10 +285,6 @@ const verifyQr = (req, res) => {
                 return res.status(400).json({ message: "Booking has expired" });
             }
 
-            // Mark the booking as used or checked-in if needed
-            // booking.checkedIn = true;
-            // return booking.save().then(() => res.status(200).json({ message: "QR code is valid", booking }));
-
             return res
                 .status(200)
                 .json({ message: "QR code is valid", booking });
@@ -300,12 +297,14 @@ const checkIn = (req, res) => {
     const currentUserId = req.user && (req.user.id || req.user._id || req.user.userId);
 
     Booking.findOne({ ticketCode })
+        .populate({ path: "event" })
         .then((booking) => {
             if (!booking) {
                 return res.status(404).json({ message: "Invalid Ticket" });
             }
 
-            if (booking.user._id.toString() !== currentUserId) {
+            // Check if the scanner is the event organizer
+            if (booking.event.createdBy.toString() !== currentUserId) {
                 return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
 
