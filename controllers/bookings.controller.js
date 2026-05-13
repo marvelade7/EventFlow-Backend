@@ -314,25 +314,42 @@ const verifyQr = (req, res) => {
                 return res.status(500).json({ message: "Event configuration error" });
             }
 
+            console.log("CreatedBy check:", {
+                organizerIdString: booking.event.createdBy._id.toString(),
+                currentUserIdString: currentUserId,
+                match: booking.event.createdBy._id.toString() === currentUserId
+            });
+
             // Check if the scanner is the event organizer
             if (booking.event.createdBy._id.toString() !== currentUserId) {
+                console.log("Authorization failed - not event organizer");
                 return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
+
+            console.log("Authorization passed");
 
             if (booking.paymentStatus !== "paid") {
                 console.log("Payment not paid. Status:", booking.paymentStatus);
                 return res.status(400).json({ message: "Ticket is not paid" });
             }
 
+            console.log("Payment status check passed");
+
             if (booking.checkedIn) {
+                console.log("Ticket already checked in");
                 return res.status(400).json({
                     message: "Ticket has already been used for check-in",
                 });
             }
 
+            console.log("Already checked in check passed");
+
             if (booking.expiresAt && booking.expiresAt < new Date()) {
+                console.log("Booking expired");
                 return res.status(400).json({ message: "Booking has expired" });
             }
+
+            console.log("All checks passed. Sending success response with booking:", { ticketCode: booking.ticketCode });
 
             return res
                 .status(200)
