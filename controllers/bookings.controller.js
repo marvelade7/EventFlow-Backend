@@ -135,11 +135,16 @@ const simulatePayment = (req, res) => {
             .json({ message: "Payment reference is required" });
     }
 
+    console.log("Processing payment for reference:", reference);
+
     return Payment.findOne({ reference })
         .then((payment) => {
             if (!payment) {
+                console.error("Payment not found:", reference);
                 return res.status(404).json({ message: "Payment not found" });
             }
+
+            console.log("Payment found:", { reference, status: payment.status, ticketType: payment.ticketType });
 
             return Booking.find({ paymentReference: reference })
                 .sort({ createdAt: 1 })
@@ -152,7 +157,13 @@ const simulatePayment = (req, res) => {
                 })
                 .populate({ path: "user", select: "firstName lastName email" })
                 .then((existingBookings) => {
+                    console.log("Existing bookings count:", existingBookings.length);
+                    
                     if (existingBookings.length > 0) {
+                        console.log("Bookings already exist, returning existing:", {
+                            count: existingBookings.length,
+                            paymentStatus: existingBookings[0].paymentStatus
+                        });
                         return res.status(200).json({
                             message: "Payment already processed",
                             bookings: existingBookings,
@@ -162,9 +173,13 @@ const simulatePayment = (req, res) => {
                     payment.status = "success";
                     return payment
                         .save()
-                        .then(() => handleBooking(payment))
-                        .then(() =>
-                            Booking.find({ paymentReference: reference })
+                        .then(() => {
+                            console.log("Payment status updated to success");
+                            return handleBooking(payment);
+                        })
+                        .then((savedBookings) => {
+                            console.log("Bookings created:", { count: savedBookings?.length });
+                            return Booking.find({ paymentReference: reference })
                                 .sort({ createdAt: 1 })
                                 .populate({
                                     path: "event",
@@ -176,9 +191,18 @@ const simulatePayment = (req, res) => {
                                 .populate({
                                     path: "user",
                                     select: "firstName lastName email",
-                                }),
-                        )
+                                });
+                        })
                         .then((bookings) => {
+                            console.log("Found bookings after creation:", {
+                                count: bookings.length,
+                                bookings: bookings.map(b => ({
+                                    ticketCode: b.ticketCode,
+                                    paymentStatus: b.paymentStatus,
+                                    paymentReference: b.paymentReference
+                                }))
+                            });
+                            
                             bookings.forEach((booking) => {
                                 sendUserEmail(booking);
                                 sendOrganizerEmail(booking);
@@ -191,7 +215,10 @@ const simulatePayment = (req, res) => {
                         });
                 });
         })
-        .catch((err) => res.status(500).json({ message: err.message }));
+        .catch((err) => {
+            console.error("simulatePayment error:", err);
+            res.status(500).json({ message: err.message });
+        });
 };
 
 const getMyBookings = (req, res) => {
@@ -269,7 +296,22 @@ const verifyQr = (req, res) => {
         .populate({ path: "user" })
         .then((booking) => {
             if (!booking) {
+                console.log("Booking not found for ticketCode:", ticketCode);
                 return res.status(404).json({ message: "Invalid ticket" });
+            }
+
+            console.log("Booking found:", {
+                ticketCode: booking.ticketCode,
+                paymentStatus: booking.paymentStatus,
+                paymentReference: booking.paymentReference,
+                organizerId: booking.event.createdBy?._id,
+                currentUserId
+            });
+
+            // Check if the event has a createdBy field
+            if (!booking.event.createdBy) {
+                console.error("Event missing createdBy field:", booking.event._id);
+                return res.status(500).json({ message: "Event configuration error" });
             }
 
             // Check if the scanner is the event organizer
@@ -278,6 +320,7 @@ const verifyQr = (req, res) => {
             }
 
             if (booking.paymentStatus !== "paid") {
+                console.log("Payment not paid. Status:", booking.paymentStatus);
                 return res.status(400).json({ message: "Ticket is not paid" });
             }
 
@@ -295,7 +338,10 @@ const verifyQr = (req, res) => {
                 .status(200)
                 .json({ message: "QR code is valid", booking });
         })
-        .catch((err) => res.status(500).json({ message: err.message }));
+        .catch((err) => {
+            console.error("verifyQr error:", err);
+            res.status(500).json({ message: err.message });
+        });
 };
 
 const checkIn = (req, res) => {
