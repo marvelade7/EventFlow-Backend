@@ -389,14 +389,16 @@ const checkIn = (req, res) => {
             }
 
             booking.checkedIn = true;
+            booking.status = "checked-in";
             booking.checkedInAt = new Date();
 
             return booking
                 .save()
-                .then(() =>
-                    res
-                        .status(200)
-                        .json({ message: "Check-in successful", booking }),
+                .then((savedBooking) =>
+                    res.status(200).json({
+                        message: "Check-in successful",
+                        booking: savedBooking,
+                    }),
                 );
         })
         .catch((err) => {

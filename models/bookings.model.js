@@ -17,6 +17,13 @@ const bookingSchema = new mongoose.Schema(
             enum: ['booked', 'checked-in'],
             default: 'booked',
         },
+        checkedIn: {
+            type: Boolean,
+            default: false,
+        },
+        checkedInAt: {
+            type: Date,
+        },
         paymentStatus: {
             type: String,
             enum: ['pending', 'paid'],
