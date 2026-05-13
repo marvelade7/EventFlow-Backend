@@ -252,6 +252,8 @@ const getMyEventBookings = (req, res) => {
 const verifyQr = (req, res) => {
     const ticketCode = (req.body?.ticketCode || "").toString().trim().toUpperCase();
 
+    const currentUserId = req.user && (req.user.id || req.user._id || req.user.userId);
+
     if (!ticketCode) {
         return res.status(400).json({ message: "Ticket code is required" });
     }
@@ -262,6 +264,10 @@ const verifyQr = (req, res) => {
         .then((booking) => {
             if (!booking) {
                 return res.status(404).json({ message: "Invalid ticket" });
+            }
+
+            if (booking.user._id.toString() !== currentUserId) {
+                return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
 
             if (booking.paymentStatus !== "paid") {
@@ -291,11 +297,16 @@ const verifyQr = (req, res) => {
 
 const checkIn = (req, res) => {
     const { ticketCode } = req.params;
+    const currentUserId = req.user && (req.user.id || req.user._id || req.user.userId);
 
     Booking.findOne({ ticketCode })
         .then((booking) => {
             if (!booking) {
                 return res.status(404).json({ message: "Invalid Ticket" });
+            }
+
+            if (booking.user._id.toString() !== currentUserId) {
+                return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
             }
 
             if (booking.checkedIn) {
