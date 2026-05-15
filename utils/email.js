@@ -3,7 +3,10 @@ const QRCode = require("qrcode");
 
 const createTransporter = () => {
     return nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",  // force hostname instead of service
+        port: 465,
+        secure: true,
+        family: 4,               // force IPv4
         auth: {
             user: process.env.mailUser,
             pass: process.env.mailPass,
