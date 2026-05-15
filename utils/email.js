@@ -47,46 +47,43 @@ const getOrganizerName = (createdBy) => {
     return `${first}${last ? ` ${last}` : ""}`.trim() || "EventIQ";
 };
 
-const sendUserEmail = async (booking) => {
-    try {
-        const user = booking.user || {};
-        const event = booking.event || {};
-        const createdBy = event.createdBy || {};
+const sendUserEmail = (booking) => {
+    const user = booking.user || {};
+    const event = booking.event || {};
+    const createdBy = event.createdBy || {};
 
-        const userName =
-            [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-            "Attendee";
-        const userEmail = user.email;
+    const userName =
+        [user.firstName, user.lastName].filter(Boolean).join(" ") || "Attendee";
+    const userEmail = user.email;
 
-        if (!userEmail) {
-            console.warn(
-                "sendUserEmail: no user email found for booking",
-                booking._id,
-            );
-            return;
-        }
+    if (!userEmail) {
+        console.warn(
+            "sendUserEmail: no user email found for booking",
+            booking._id,
+        );
+        return Promise.resolve();
+    }
 
-        const ticketCode = (booking.ticketCode || "").toString().trim();
-        const eventTitle = event.title || "Event";
-        const organizerName = getOrganizerName(createdBy);
-        const eventLocation = formatLocation(event.location || event.venue);
-        const eventDate = formatEventDate(event.startDateTime);
-        const eventTime = formatEventTime(event.startDateTime);
-        const ticketType = booking.ticketTypeName || "General Admission";
-        const dateTime = eventTime ? `${eventDate}, ${eventTime}` : eventDate;
+    const ticketCode = (booking.ticketCode || "").toString().trim();
+    const eventTitle = event.title || "Event";
+    const organizerName = getOrganizerName(createdBy);
+    const eventLocation = formatLocation(event.location || event.venue);
+    const eventDate = formatEventDate(event.startDateTime);
+    const eventTime = formatEventTime(event.startDateTime);
+    const ticketType = booking.ticketTypeName || "General Admission";
+    const dateTime = eventTime ? `${eventDate}, ${eventTime}` : eventDate;
 
-        // Generate QR code as base64 data URL
-        const qrDataUrl = await QRCode.toDataURL(ticketCode, {
-            errorCorrectionLevel: "M",
-            margin: 2,
-            width: 280,
-        });
-
-        const mailOptions = {
-            from: `"EventFlow" <${process.env.mailUser}>`,
-            to: userEmail,
-            subject: `Your ticket for ${eventTitle} 🎟️`,
-            html: `
+    return QRCode.toDataURL(ticketCode, {
+        errorCorrectionLevel: "M",
+        margin: 2,
+        width: 280,
+    })
+        .then((qrDataUrl) => {
+            const mailOptions = {
+                from: `"EventFlow" <${process.env.mailUser}>`,
+                to: userEmail,
+                subject: `Your ticket for ${eventTitle} 🎟️`,
+                html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -234,42 +231,45 @@ const sendUserEmail = async (booking) => {
 </body>
 </html>
             `,
-        };
+            };
 
-        const transporter = createTransporter();
-        const info = await transporter.sendMail(mailOptions);
-        console.log("Ticket email sent to", userEmail, info.response);
-    } catch (err) {
-        console.error("sendUserEmail error:", err);
-    }
+            const transporter = createTransporter();
+            return transporter.sendMail(mailOptions);
+        })
+        .then((info) => {
+            console.log("Ticket email sent to", userEmail, info.response);
+        })
+        .catch((err) => {
+            console.error("sendUserEmail error:", err);
+        });
 };
 
-const sendOrganizerEmail = async (booking) => {
-    try {
-        const user = booking.user || {};
-        const event = booking.event || {};
-        const createdBy = event.createdBy || {};
+const sendOrganizerEmail = (booking) => {
+    const user = booking.user || {};
+    const event = booking.event || {};
+    const createdBy = event.createdBy || {};
 
-        const organizerEmail = createdBy.email;
-        if (!organizerEmail) {
-            console.warn(
-                "sendOrganizerEmail: no organizer email for booking",
-                booking._id,
-            );
-            return;
-        }
+    const organizerEmail = createdBy.email;
+    if (!organizerEmail) {
+        console.warn(
+            "sendOrganizerEmail: no organizer email for booking",
+            booking._id,
+        );
+        return Promise.resolve();
+    }
 
-        const attendeeName =
-            [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-            "An attendee";
-        const organizerName = getOrganizerName(createdBy);
-        const eventTitle = event.title || "your event";
-        const ticketCode = (booking.ticketCode || "").toString().trim();
-        const ticketType = booking.ticketTypeName || "General Admission";
-        const eventDate = formatEventDate(event.startDateTime);
+    const attendeeName =
+        [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+        "An attendee";
+    const organizerName = getOrganizerName(createdBy);
+    const eventTitle = event.title || "your event";
+    const ticketCode = (booking.ticketCode || "").toString().trim();
+    const ticketType = booking.ticketTypeName || "General Admission";
+    const eventDate = formatEventDate(event.startDateTime);
 
-        const transporter = createTransporter();
-        await transporter.sendMail({
+    const transporter = createTransporter();
+    return transporter
+        .sendMail({
             from: `"EventFlow" <${process.env.mailUser}>`,
             to: organizerEmail,
             subject: `New booking for ${eventTitle} 🎉`,
@@ -295,22 +295,13 @@ const sendOrganizerEmail = async (booking) => {
   </div>
 </div>
             `,
+        })
+        .then(() => {
+            console.log("Organizer email sent to", organizerEmail);
+        })
+        .catch((err) => {
+            console.error("sendOrganizerEmail error:", err);
         });
-
-        console.log("Organizer email sent to", organizerEmail);
-    } catch (err) {
-        console.error("sendOrganizerEmail error:", err);
-    }
 };
 
 module.exports = { sendUserEmail, sendOrganizerEmail };
-
-// const sendOrganizerEmail = (booking) => {
-//     console.log("📧 Email to ORGANIZER");
-//     console.log("New booking received");
-// };
-
-// module.exports = {
-//     sendUserEmail,
-//     sendOrganizerEmail,
-// };

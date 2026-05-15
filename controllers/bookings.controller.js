@@ -156,7 +156,7 @@ const simulatePayment = (req, res) => {
                     path: "event",
                     populate: {
                         path: "createdBy",
-                        select: "firstName lastName fullName name profilePic",
+                        select: "firstName lastName fullName name profilePic email",
                     },
                 })
                 .populate({ path: "user", select: "firstName lastName email" })
