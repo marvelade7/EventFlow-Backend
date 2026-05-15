@@ -144,7 +144,11 @@ const simulatePayment = (req, res) => {
                 return res.status(404).json({ message: "Payment not found" });
             }
 
-            console.log("Payment found:", { reference, status: payment.status, ticketType: payment.ticketType });
+            console.log("Payment found:", {
+                reference,
+                status: payment.status,
+                ticketType: payment.ticketType,
+            });
 
             return Booking.find({ paymentReference: reference })
                 .sort({ createdAt: 1 })
@@ -157,13 +161,20 @@ const simulatePayment = (req, res) => {
                 })
                 .populate({ path: "user", select: "firstName lastName email" })
                 .then((existingBookings) => {
-                    console.log("Existing bookings count:", existingBookings.length);
-                    
+                    console.log(
+                        "Existing bookings count:",
+                        existingBookings.length,
+                    );
+
                     if (existingBookings.length > 0) {
-                        console.log("Bookings already exist, returning existing:", {
-                            count: existingBookings.length,
-                            paymentStatus: existingBookings[0].paymentStatus
-                        });
+                        console.log(
+                            "Bookings already exist, returning existing:",
+                            {
+                                count: existingBookings.length,
+                                paymentStatus:
+                                    existingBookings[0].paymentStatus,
+                            },
+                        );
                         return res.status(200).json({
                             message: "Payment already processed",
                             bookings: existingBookings,
@@ -178,7 +189,9 @@ const simulatePayment = (req, res) => {
                             return handleBooking(payment);
                         })
                         .then((savedBookings) => {
-                            console.log("Bookings created:", { count: savedBookings?.length });
+                            console.log("Bookings created:", {
+                                count: savedBookings?.length,
+                            });
                             return Booking.find({ paymentReference: reference })
                                 .sort({ createdAt: 1 })
                                 .populate({
@@ -196,13 +209,13 @@ const simulatePayment = (req, res) => {
                         .then((bookings) => {
                             console.log("Found bookings after creation:", {
                                 count: bookings.length,
-                                bookings: bookings.map(b => ({
+                                bookings: bookings.map((b) => ({
                                     ticketCode: b.ticketCode,
                                     paymentStatus: b.paymentStatus,
-                                    paymentReference: b.paymentReference
-                                }))
+                                    paymentReference: b.paymentReference,
+                                })),
                             });
-                            
+
                             bookings.forEach((booking) => {
                                 sendUserEmail(booking);
                                 sendOrganizerEmail(booking);
@@ -277,9 +290,13 @@ const getMyEventBookings = (req, res) => {
 };
 
 const verifyQr = (req, res) => {
-    const ticketCode = (req.body?.ticketCode || "").toString().trim().toUpperCase();
+    const ticketCode = (req.body?.ticketCode || "")
+        .toString()
+        .trim()
+        .toUpperCase();
 
-    const currentUserId = req.user && (req.user.id || req.user._id || req.user.userId);
+    const currentUserId =
+        req.user && (req.user.id || req.user._id || req.user.userId);
 
     if (!ticketCode) {
         return res.status(400).json({ message: "Ticket code is required" });
@@ -290,8 +307,8 @@ const verifyQr = (req, res) => {
             path: "event",
             populate: {
                 path: "createdBy",
-                select: "_id firstName lastName"
-            }
+                select: "_id firstName lastName",
+            },
         })
         .populate({ path: "user" })
         .then((booking) => {
@@ -305,44 +322,53 @@ const verifyQr = (req, res) => {
                 paymentStatus: booking.paymentStatus,
                 paymentReference: booking.paymentReference,
                 organizerId: booking.event.createdBy?._id,
-                currentUserId
+                currentUserId,
             });
 
             // Check if the event has a createdBy field
             if (!booking.event.createdBy) {
-                console.error("Event missing createdBy field:", booking.event._id);
-                return res.status(500).json({ message: "Event configuration error" });
+                console.error(
+                    "Event missing createdBy field:",
+                    booking.event._id,
+                );
+                return res
+                    .status(500)
+                    .json({ message: "Event configuration error" });
             }
 
             console.log("CreatedBy check:", {
                 organizerIdString: booking.event.createdBy._id.toString(),
                 currentUserIdString: currentUserId,
-                match: booking.event.createdBy._id.toString() === currentUserId
+                match: booking.event.createdBy._id.toString() === currentUserId,
             });
 
             // Check if the scanner is the event organizer
             if (booking.event.createdBy._id.toString() !== currentUserId) {
                 console.log("Authorization failed - not event organizer");
-                return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
+                return res
+                    .status(403)
+                    .json({
+                        message:
+                            "You are not authorized to check in attendees for this event",
+                    });
             }
-
             console.log("Authorization passed");
+
+            if (booking.checkedIn || booking.status === "checked-in") {
+                console.log("Ticket already checked in");
+                return res.status(200).json({
+                    message: "Ticket has already been used for check-in",
+                    status: "checked-in",
+                    booking,
+                });
+            }
+            console.log("Already checked in check passed");
 
             if (booking.paymentStatus !== "paid") {
                 console.log("Payment not paid. Status:", booking.paymentStatus);
                 return res.status(400).json({ message: "Ticket is not paid" });
             }
-
             console.log("Payment status check passed");
-
-            if (booking.checkedIn) {
-                console.log("Ticket already checked in");
-                return res.status(200).json({
-                    message: "Ticket has already been used for check-in",
-                });
-            }
-
-            console.log("Already checked in check passed");
 
             // Remove expiry check - organizers should be able to scan past events
             // if (booking.expiresAt && booking.expiresAt < new Date()) {
@@ -350,7 +376,10 @@ const verifyQr = (req, res) => {
             //     return res.status(400).json({ message: "Booking has expired" });
             // }
 
-            console.log("All checks passed. Sending success response with booking:", { ticketCode: booking.ticketCode });
+            console.log(
+                "All checks passed. Sending success response with booking:",
+                { ticketCode: booking.ticketCode },
+            );
 
             return res
                 .status(200)
@@ -364,15 +393,16 @@ const verifyQr = (req, res) => {
 
 const checkIn = (req, res) => {
     const { ticketCode } = req.params;
-    const currentUserId = req.user && (req.user.id || req.user._id || req.user.userId);
+    const currentUserId =
+        req.user && (req.user.id || req.user._id || req.user.userId);
 
     Booking.findOne({ ticketCode })
         .populate({
             path: "event",
             populate: {
                 path: "createdBy",
-                select: "_id firstName lastName"
-            }
+                select: "_id firstName lastName",
+            },
         })
         .then((booking) => {
             if (!booking) {
@@ -381,7 +411,12 @@ const checkIn = (req, res) => {
 
             // Check if the scanner is the event organizer
             if (booking.event.createdBy._id.toString() !== currentUserId) {
-                return res.status(403).json({ message: "You are not authorized to check in attendees for this event" });
+                return res
+                    .status(403)
+                    .json({
+                        message:
+                            "You are not authorized to check in attendees for this event",
+                    });
             }
 
             if (booking.checkedIn) {
@@ -392,14 +427,12 @@ const checkIn = (req, res) => {
             booking.status = "checked-in";
             booking.checkedInAt = new Date();
 
-            return booking
-                .save()
-                .then((savedBooking) =>
-                    res.status(200).json({
-                        message: "Check-in successful",
-                        booking: savedBooking,
-                    }),
-                );
+            return booking.save().then((savedBooking) =>
+                res.status(200).json({
+                    message: "Check-in successful",
+                    booking: savedBooking,
+                }),
+            );
         })
         .catch((err) => {
             console.error("checkIn error:", err);
@@ -423,17 +456,17 @@ const getAllMyBookingsDebug = (req, res) => {
             console.log("Debug - User's bookings:", {
                 userId,
                 count: bookings.length,
-                bookings: bookings.map(b => ({
+                bookings: bookings.map((b) => ({
                     ticketCode: b.ticketCode,
                     paymentStatus: b.paymentStatus,
                     paymentReference: b.paymentReference,
-                    createdAt: b.createdAt
-                }))
+                    createdAt: b.createdAt,
+                })),
             });
             return res.status(200).json({
                 message: "Debug bookings",
                 count: bookings.length,
-                bookings
+                bookings,
             });
         })
         .catch((err) => {
