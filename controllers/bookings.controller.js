@@ -337,7 +337,7 @@ const verifyQr = (req, res) => {
 
             if (booking.checkedIn) {
                 console.log("Ticket already checked in");
-                return res.status(400).json({
+                return res.status(200).json({
                     message: "Ticket has already been used for check-in",
                 });
             }
