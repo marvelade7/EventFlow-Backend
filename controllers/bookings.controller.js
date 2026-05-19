@@ -229,6 +229,17 @@ const simulatePayment = (req, res) => {
                 });
         })
         .catch((err) => {
+            // Handle sold out specifically
+            if (err.message === "Sold out") {
+                return res
+                    .status(400)
+                    .json({ message: "Sorry, tickets are sold out" });
+            }
+            if (err.message === "Ticket type not found") {
+                return res
+                    .status(404)
+                    .json({ message: "Ticket type not found" });
+            }
             console.error("simulatePayment error:", err);
             res.status(500).json({ message: err.message });
         });
@@ -345,12 +356,10 @@ const verifyQr = (req, res) => {
             // Check if the scanner is the event organizer
             if (booking.event.createdBy._id.toString() !== currentUserId) {
                 console.log("Authorization failed - not event organizer");
-                return res
-                    .status(403)
-                    .json({
-                        message:
-                            "You are not authorized to check in attendees for this event",
-                    });
+                return res.status(403).json({
+                    message:
+                        "You are not authorized to check in attendees for this event",
+                });
             }
             console.log("Authorization passed");
 
@@ -381,9 +390,15 @@ const verifyQr = (req, res) => {
                 { ticketCode: booking.ticketCode },
             );
 
-            return res
-                .status(200)
-                .json({ message: "QR code is valid", booking });
+            return Booking.countDocuments({
+                paymentReference: booking.paymentReference,
+            }).then((totalTickets) =>
+                res.status(200).json({
+                    message: "QR code is valid",
+                    booking,
+                    totalTickets, // e.g. 3
+                }),
+            );
         })
         .catch((err) => {
             console.error("verifyQr error:", err);
@@ -411,12 +426,10 @@ const checkIn = (req, res) => {
 
             // Check if the scanner is the event organizer
             if (booking.event.createdBy._id.toString() !== currentUserId) {
-                return res
-                    .status(403)
-                    .json({
-                        message:
-                            "You are not authorized to check in attendees for this event",
-                    });
+                return res.status(403).json({
+                    message:
+                        "You are not authorized to check in attendees for this event",
+                });
             }
 
             if (booking.checkedIn) {

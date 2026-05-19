@@ -81,6 +81,7 @@ const handleBooking = (payment) => {
                         paymentReference: payment.reference,
                         ticketCode: generateTicketID(),
                         expiresAt: event.endDateTime || undefined,
+                        
                     }),
             );
 
