@@ -519,11 +519,12 @@ const getUserDashboardStats = (req, res) => {
                 }
             });
 
-            const activeTickets = bookings.filter((booking) => {
-                booking.event &&
+            const activeTickets = bookings.filter(
+                (booking) =>
+                    booking.event &&
                     !booking.checkedIn &&
-                    booking.event.endDateTime > now;
-            });
+                    booking.event.endDateTime > now,
+            );
 
             const seenAttendedEvents = {};
             const attendedEvents = [];
