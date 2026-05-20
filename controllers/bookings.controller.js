@@ -542,7 +542,7 @@ const getUserDashboardStats = (req, res) => {
             });
             return res.status(200).json({
                 upcomingEventCount: upcomingEvents.length,
-                activeTicketsCount: activeTickets.length,
+                activeTicketCount: activeTickets.length,
                 attendedEventCount: attendedEvents.length,
 
                 upcomingEvents,
