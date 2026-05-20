@@ -8,6 +8,7 @@ const {
     verifyQr,
     checkIn,
     getAllMyBookingsDebug,
+    getUserDashboardStats,
 } = require("../controllers/bookings.controller");
 
 const auth = require("../middlewares/auth.middleware");
@@ -20,5 +21,6 @@ router.get("/my-event-bookings", getMyEventBookings);
 router.post("/payment/success", simulatePayment);
 router.post("/verify-qr", verifyQr);
 router.post("/check-in/:ticketCode", checkIn);
+router.get("/dashboard-stats", auth, getUserDashboardStats);
 
 module.exports = router;

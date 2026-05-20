@@ -488,6 +488,74 @@ const getAllMyBookingsDebug = (req, res) => {
         });
 };
 
+const getUserDashboardStats = (req, res) => {
+    const userId = getUserIdFromRequest(req);
+
+    if (!userId) {
+        return res.status(401).json({ message: "User ID not found in token" });
+    }
+    const now = new Date();
+
+    return Booking.find({ user: userId, paymentStatus: "paid" })
+        .populate({
+            path: "event",
+            populate: {
+                path: "createdBy",
+                select: "firstName lastName fullName name profilePic",
+            },
+        })
+        .populate({ path: "user", select: "firstName lastName email" })
+        .then((bookings) => {
+            const upcomingEventIds = new set();
+            const upcomingEvents = [];
+
+            bookings.forEach((booking) => {
+                if (booking.event && booking.event.startDateTime > now) {
+                    const eventId = booking.event._id.toString();
+                    if (!upcomingEventIds.has(eventId)) {
+                        upcomingEventIds.add(eventId);
+                        upcomingEvents.push(booking.event);
+                    }
+                }
+            });
+
+            const activeTickets = bookings.filter((booking) => {
+                booking.event &&
+                    !booking.checkedIn &&
+                    booking.event.endDateTime > now;
+            });
+
+            const attendedEventIds = new Set();
+            const attendedEvents = [];
+
+            bookings.forEach((booking) => {
+                if (
+                    booking.event &&
+                    (booking.checkedIn || booking.event.endDateTime < now)
+                ) {
+                    const eventId = booking.event._id.toString();
+                    if (!attendedEventIds.has(eventId)) {
+                        attendedEventIds.add(eventId);
+                        attendedEvents.push(booking.event);
+                    }
+                }
+            });
+            return res.status(200).json({
+                upcomingEventCount: upcomingEvents.length,
+                activeTicketsCount: activeTickets.length,
+                attendedEventCount: attendedEvents.length,
+
+                upcomingEvents,
+                activeTickets,
+                attendedEvents,
+            });
+        })
+        .catch((err) => {
+            console.error("getUserDashboardStats error:", err);
+            res.status(500).json({ message: err.message });
+        });
+};
+
 module.exports = {
     checkAvailability,
     initializePayment,
@@ -497,4 +565,5 @@ module.exports = {
     verifyQr,
     checkIn,
     getAllMyBookingsDebug,
+    getUserDashboardStats,
 };
