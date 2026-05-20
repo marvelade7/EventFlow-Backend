@@ -189,6 +189,17 @@ const getEventById = (req, res) => {
         });
 };
 
+const resolveEventStatus = (event) => {
+    const now = new Date();
+    const start = new Date(event.startDateTime);
+    const end = new Date(event.endDateTime);
+
+    if (event.status === "cancelled") return "cancelled";
+    if (now < start) return "upcoming";
+    if (now >= start && now <= end) return "ongoing";
+    return "completed";
+};
+
 const getEventsByUserId = (req, res) => {
     const userId =
         req.params.userId ||
@@ -205,34 +216,73 @@ const getEventsByUserId = (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    return Event.find({ createdBy: userId })
-        .populate("createdBy", "firstName lastName profilePic")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .then((events) => {
-            return Event.countDocuments({ createdBy: userId }).then((total) => {
-                return res.status(200).json({
-                    message: "Events retrieved successfully",
-                    events,
-                    currentPage: page,
-                    totalPages: Math.ceil(total / limit),
-                    totalEvents: total,
-                });
+    return Promise.all([
+        Event.find({ createdBy: userId })
+            .populate("createdBy", "firstName lastName profilePic")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Event.countDocuments({ createdBy: userId }),
+    ])
+    .then(([events, total]) => {
+        const eventIds = events.map((e) => e._id);
+
+        return Ticket.aggregate([
+            {
+                $match: {
+                    event: { $in: eventIds },
+                    status: { $in: ["confirmed", "completed"] },
+                },
+            },
+            {
+                $group: {
+                    _id: "$event",
+                    ticketsSold: { $sum: 1 },
+                    totalRevenue: { $sum: "$amountPaid" },
+                },
+            },
+        ]).then((ticketStats) => {
+            const statsMap = ticketStats.reduce((acc, stat) => {
+                acc[String(stat._id)] = {
+                    ticketsSold: stat.ticketsSold,
+                    totalRevenue: stat.totalRevenue,
+                };
+                return acc;
+            }, {});
+
+            const enrichedEvents = events.map((event) => {
+                const eventObj = event.toObject();
+                const stats = statsMap[String(event._id)] || {
+                    ticketsSold: 0,
+                    totalRevenue: 0,
+                };
+
+                return {
+                    ...eventObj,
+                    status: resolveEventStatus(eventObj),
+                    ticketsSold: stats.ticketsSold,
+                    totalRevenue: stats.totalRevenue,
+                };
             });
-        })
-        .catch((err) => {
-            console.error(err);
-            if (err.name === "CastError") {
-                return res.status(400).json({
-                    message: "Invalid user ID",
-                });
-            }
-            return res.status(500).json({
-                message: "Error retrieving events",
-                error: err.message,
+
+            return res.status(200).json({
+                message: "Events retrieved successfully",
+                events: enrichedEvents,
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+                totalEvents: total,
             });
         });
+    }).catch((err) => {
+        console.error(err);
+        if (err.name === "CastError") {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+        return res.status(500).json({
+            message: "Error retrieving events",
+            error: err.message,
+        });
+    });
 };
 
 const updateEvent = (req, res) => {
