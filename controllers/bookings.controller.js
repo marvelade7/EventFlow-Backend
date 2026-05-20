@@ -506,14 +506,14 @@ const getUserDashboardStats = (req, res) => {
         })
         .populate({ path: "user", select: "firstName lastName email" })
         .then((bookings) => {
-            const upcomingEventIds = new set();
+            const seenUpcoming = {};
             const upcomingEvents = [];
 
             bookings.forEach((booking) => {
                 if (booking.event && booking.event.startDateTime > now) {
-                    const eventId = booking.event._id.toString();
-                    if (!upcomingEventIds.has(eventId)) {
-                        upcomingEventIds.add(eventId);
+                    const id = booking.event._id.toString();
+                    if (!seenUpcoming[id]) {
+                        seenUpcoming[id] = true;
                         upcomingEvents.push(booking.event);
                     }
                 }
@@ -525,7 +525,7 @@ const getUserDashboardStats = (req, res) => {
                     booking.event.endDateTime > now;
             });
 
-            const attendedEventIds = new Set();
+            const seenAttendedEvents = {};
             const attendedEvents = [];
 
             bookings.forEach((booking) => {
@@ -533,9 +533,9 @@ const getUserDashboardStats = (req, res) => {
                     booking.event &&
                     (booking.checkedIn || booking.event.endDateTime < now)
                 ) {
-                    const eventId = booking.event._id.toString();
-                    if (!attendedEventIds.has(eventId)) {
-                        attendedEventIds.add(eventId);
+                    const id = booking.event._id.toString();
+                    if (!seenAttendedEvents[id]) {
+                        seenAttendedEvents[id] = true;
                         attendedEvents.push(booking.event);
                     }
                 }
