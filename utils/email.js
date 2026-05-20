@@ -1,16 +1,53 @@
 const nodemailer = require("nodemailer");
 const QRCode = require("qrcode");
+const dns = require("dns");
+const net = require("net");
+
+const resolveIPv4 = (hostname) =>
+    new Promise((resolve, reject) => {
+        dns.resolve4(hostname, (err, addresses) => {
+            if (err) return reject(err);
+            if (!addresses || addresses.length === 0)
+                return reject(new Error("No IPv4 addresses found"));
+            resolve(addresses[0]);
+        });
+    });
+
+// const createTransporter = () => {
+//     return nodemailer.createTransport({
+//         host: "smtp.gmail.com",  // force hostname instead of service
+//         port: 465,
+//         secure: true,
+//         family: 4,               // force IPv4
+//         auth: {
+//             user: process.env.mailUser,
+//             pass: process.env.mailPass,
+//         },
+//     });
+// };
 
 const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: "smtp.gmail.com",  // force hostname instead of service
-        port: 465,
-        secure: true,
-        family: 4,               // force IPv4
-        auth: {
-            user: process.env.mailUser,
-            pass: process.env.mailPass,
-        },
+    return new Promise((resolve, reject) => {
+        dns.resolve4("smtp.gmail.com", (err, addresses) => {
+            if (err) return reject(err);
+            if (!addresses || addresses.length === 0)
+                return reject(new Error("No IPv4 addresses found"));
+
+            const transporter = nodemailer.createTransport({
+                host: addresses[0],
+                port: 465,
+                secure: true,
+                tls: {
+                    servername: "smtp.gmail.com",
+                },
+                auth: {
+                    user: process.env.mailUser,
+                    pass: process.env.mailPass,
+                },
+            });
+
+            resolve(transporter);
+        });
     });
 };
 
@@ -236,8 +273,9 @@ const sendUserEmail = (booking) => {
             `,
             };
 
-            const transporter = createTransporter();
-            return transporter.sendMail(mailOptions);
+            return createTransporter().then((transporter) =>
+                transporter.sendMail(mailOptions),
+            );
         })
         .then((info) => {
             console.log("Ticket email sent to", userEmail, info.response);
@@ -270,13 +308,13 @@ const sendOrganizerEmail = (booking) => {
     const ticketType = booking.ticketTypeName || "General Admission";
     const eventDate = formatEventDate(event.startDateTime);
 
-    const transporter = createTransporter();
-    return transporter
-        .sendMail({
-            from: `"EventFlow" <${process.env.mailUser}>`,
-            to: organizerEmail,
-            subject: `New booking for ${eventTitle} 🎉`,
-            html: `
+    return createTransporter().then((transporter) => {
+        return transporter
+            .sendMail({
+                from: `"EventFlow" <${process.env.mailUser}>`,
+                to: organizerEmail,
+                subject: `New booking for ${eventTitle} 🎉`,
+                html: `
 <div style="background-color:#f4f4f4;padding:32px 16px;font-family:'Roboto','Segoe UI',Arial,sans-serif;">
   <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e0e0e0;overflow:hidden;">
     <div style="padding:24px 28px;border-bottom:1px solid #f0f0f0;">
@@ -298,13 +336,14 @@ const sendOrganizerEmail = (booking) => {
   </div>
 </div>
             `,
-        })
-        .then(() => {
-            console.log("Organizer email sent to", organizerEmail);
-        })
-        .catch((err) => {
-            console.error("sendOrganizerEmail error:", err);
-        });
+            })
+            .then(() => {
+                console.log("Organizer email sent to", organizerEmail);
+            })
+            .catch((err) => {
+                console.error("sendOrganizerEmail error:", err);
+            });
+    });
 };
 
 module.exports = { sendUserEmail, sendOrganizerEmail };
