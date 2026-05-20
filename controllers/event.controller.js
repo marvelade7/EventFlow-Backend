@@ -226,27 +226,58 @@ const getEventsByUserId = (req, res) => {
     ])
     .then(([events, total]) => {
         const eventIds = events.map((e) => e._id);
+        const ticketPriceMap = events.reduce((acc, event) => {
+            acc[String(event._id)] = (event.ticketTypes || []).reduce(
+                (ticketAcc, ticketType) => {
+                    if (!ticketType || !ticketType.name) {
+                        return ticketAcc;
+                    }
 
-        return Ticket.aggregate([
+                    ticketAcc[
+                        ticketType.name.toString().trim().toLowerCase()
+                    ] = Number(ticketType.ticketPrice || 0);
+                    return ticketAcc;
+                },
+                {},
+            );
+            return acc;
+        }, {});
+
+        return Booking.aggregate([
             {
                 $match: {
                     event: { $in: eventIds },
-                    status: { $in: ["confirmed", "completed"] },
+                    paymentStatus: "paid",
                 },
             },
             {
                 $group: {
-                    _id: "$event",
+                    _id: {
+                        event: "$event",
+                        ticketTypeName: "$ticketTypeName",
+                    },
                     ticketsSold: { $sum: 1 },
-                    totalRevenue: { $sum: "$amountPaid" },
                 },
             },
         ]).then((ticketStats) => {
             const statsMap = ticketStats.reduce((acc, stat) => {
-                acc[String(stat._id)] = {
-                    ticketsSold: stat.ticketsSold,
-                    totalRevenue: stat.totalRevenue,
-                };
+                const eventId = String(stat._id.event);
+                const ticketTypeName = (stat._id.ticketTypeName || "")
+                    .toString()
+                    .trim()
+                    .toLowerCase();
+                const eventPrices = ticketPriceMap[eventId] || {};
+                const ticketPrice = eventPrices[ticketTypeName] || 0;
+
+                if (!acc[eventId]) {
+                    acc[eventId] = {
+                        ticketsSold: 0,
+                        totalRevenue: 0,
+                    };
+                }
+
+                acc[eventId].ticketsSold += stat.ticketsSold;
+                acc[eventId].totalRevenue += stat.ticketsSold * ticketPrice;
                 return acc;
             }, {});
 
