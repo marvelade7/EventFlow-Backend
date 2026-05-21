@@ -1,4 +1,4 @@
-# EventIQ Backend
+# EventFlow Backend
 
 A RESTful event management and ticket booking backend built with Express.js and MongoDB.
 
