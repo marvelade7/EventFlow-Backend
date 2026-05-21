@@ -181,9 +181,14 @@ Response (success):
 - Authorization checks for event ownership (organizer-only actions)
 - Basic rate limiting on OTP resend in the user controller
 
+## Live API
+
+- **Production:** `https://eventflow-backend-fwv4.onrender.com`
+- **Local (dev):** `http://localhost:5000`
+
 ## Deployment
 
-This backend can be hosted on platforms like Render, Railway, Heroku, or any VPS/EC2 instance. Ensure environment variables are set and `MONGO_URI` is reachable from your host.
+This backend is currently deployed on Render. It can also be hosted on platforms like Railway, Heroku, or any VPS/EC2 instance. Ensure environment variables are set and `MONGO_URI` is reachable from your host.
 
 ## Development notes
 
