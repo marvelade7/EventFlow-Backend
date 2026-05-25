@@ -69,13 +69,13 @@ const postSignup = async (req, res) => {
             }
 
             const mailOptions = {
-                from: `"EventIQ" <${process.env.mailUser}>`,
+                from: `"EventFlow" <${process.env.mailUser}>`,
                 to: [savedUser.email, "marvellousadewuyi72@gmail.com"],
-                subject: `Welcome to EventIQ ${savedUser.firstName} 👋`,
+                subject: `Welcome to EventFlow ${savedUser.firstName} 👋`,
                 html: `
                     <div style="background-color: #f4f4f4; padding: 0 0 10px; border-radius: 30px 30px 0 0;">
                         <div style="padding-top: 20px; height: 100px; border-radius: 30px 30px 0 0; background: linear-gradient(-45deg, #f89b29 0%, #ff0f7b 100%);">
-                            <h1 style="color:white; text-align: center;">Welcome to EventIQ ${savedUser.firstName}</h1>
+                            <h1 style="color:white; text-align: center;">Welcome to EventFlow ${savedUser.firstName}</h1>
                         </div>
                         <div style="padding: 30px 0; text-align: center;">
                             <p style="font-size: 18px;"><span style="font-weight: 600;">Congratulations!</span> Your sign-up was successful!</p>
@@ -161,11 +161,11 @@ const postSignup = async (req, res) => {
 //             let mailOptions = {
 //                 from: mailUser,
 //                 to: [savedUser.email, "marvellousadewuyi72@gmail.com"],
-//                 subject: `Welcome to EventIQ ${savedUser.firstName} 👋`,
+//                 subject: `Welcome to EventFlow ${savedUser.firstName} 👋`,
 //                 html: `
 //                 <div style="background-color: #f4f4f4; padding: 0 0 10px; border-radius: 30px 30px 0 0  ;">
 //                     <div style="padding-top: 20px; height: 100px; border-radius: 30px 30px 0 0 ; background: linear-gradient(-45deg, #f89b29 0%, #ff0f7b 100% );">
-//                         <h1 style="color:white; text-align: center;">Welcome to EventIQ ${savedUser.firstName}</h1>
+//                         <h1 style="color:white; text-align: center;">Welcome to EventFlow ${savedUser.firstName}</h1>
 //                     </div>
 //                     <div style="padding: 30px 0; text-align: center;">
 //                         <p style="font-size: 18px;"><span style="font-weight: 600;">Congratulations!</span> Your sign-up was successful!</p>

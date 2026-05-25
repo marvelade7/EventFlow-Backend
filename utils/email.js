@@ -36,7 +36,7 @@ const createTransporter = () => {
             const transporter = nodemailer.createTransport({
                 host: addresses[0],
                 port: 587,
-                secure: true,
+                secure: false,
                 tls: {
                     servername: "smtp.gmail.com",
                 },
@@ -81,10 +81,10 @@ const formatLocation = (location) => {
 };
 
 const getOrganizerName = (createdBy) => {
-    if (!createdBy) return "EventIQ";
+    if (!createdBy) return "EventFlow";
     const first = createdBy.firstName || createdBy.name || "";
     const last = createdBy.lastName || "";
-    return `${first}${last ? ` ${last}` : ""}`.trim() || "EventIQ";
+    return `${first}${last ? ` ${last}` : ""}`.trim() || "EventFlow";
 };
 
 const sendUserEmail = (booking) => {
@@ -113,16 +113,23 @@ const sendUserEmail = (booking) => {
     const ticketType = booking.ticketTypeName || "General Admission";
     const dateTime = eventTime ? `${eventDate}, ${eventTime}` : eventDate;
 
-    return QRCode.toDataURL(ticketCode, {
+    return QRCode.toBuffer(ticketCode, {
         errorCorrectionLevel: "M",
         margin: 2,
         width: 280,
     })
-        .then((qrDataUrl) => {
+        .then((qrBuffer) => {
             const mailOptions = {
                 from: `"EventFlow" <${process.env.mailUser}>`,
                 to: userEmail,
                 subject: `Your ticket for ${eventTitle} 🎟️`,
+                attachments: [
+                    {
+                        filename: "qrcode.png",
+                        content: qrBuffer,
+                        cid: "qrcode@eventiq", // ✅ unique content ID
+                    },
+                ],
                 html: `
 <!DOCTYPE html>
 <html lang="en">
@@ -156,7 +163,7 @@ const sendUserEmail = (booking) => {
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="font-size:13px;color:#666;">This is your ticket, ${userName}</td>
-                        <td align="right" style="font-size:13px;font-weight:600;color:#333;letter-spacing:0.3px;">EventIQ</td>
+                        <td align="right" style="font-size:13px;font-weight:600;color:#333;letter-spacing:0.3px;">EventFlow</td>
                       </tr>
                     </table>
                   </td>
@@ -229,7 +236,7 @@ const sendUserEmail = (booking) => {
                         <!-- Right QR -->
                         <td style="width:200px;background:#fafafa;padding:20px 16px;text-align:center;vertical-align:middle;">
                           <img
-                            src="${qrDataUrl}"
+                            src="cid:qrcode@eventiq"
                             alt="Ticket QR Code"
                             width="160"
                             height="160"
@@ -246,7 +253,7 @@ const sendUserEmail = (booking) => {
                 <!-- Footer -->
                 <tr>
                   <td style="background:#f8f9fa;border-top:1px solid #e0e0e0;padding:10px 28px;text-align:center;">
-                    <p style="margin:0;font-size:11px;color:#bbb;">© ${new Date().getFullYear()} EventIQ · All Rights Reserved.</p>
+                    <p style="margin:0;font-size:11px;color:#bbb;">© ${new Date().getFullYear()} EventFlow · All Rights Reserved.</p>
                   </td>
                 </tr>
 
@@ -331,7 +338,7 @@ const sendOrganizerEmail = (booking) => {
       </table>
     </div>
     <div style="background:#f8f9fa;border-top:1px solid #e0e0e0;padding:10px 28px;text-align:center;">
-      <p style="margin:0;font-size:11px;color:#bbb;">© ${new Date().getFullYear()} EventIQ · All Rights Reserved.</p>
+      <p style="margin:0;font-size:11px;color:#bbb;">© ${new Date().getFullYear()} EventFlow · All Rights Reserved.</p>
     </div>
   </div>
 </div>
