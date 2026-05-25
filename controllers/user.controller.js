@@ -52,9 +52,9 @@ const postSignup = async (req, res) => {
 
         // ✅ Move transporter outside setTimeout — no need to recreate it every time
         const transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",  // ✅ Explicit host instead of service: "gmail"
-            port: 465,               // ✅ Try 465 first, fallback to 587 if it fails
-            secure: true,            // ✅ true for 465, false for 587
+            host: "smtp.gmail.com", // ✅ Explicit host instead of service: "gmail"
+            port: 465, // ✅ Try 465 first, fallback to 587 if it fails
+            secure: true, // ✅ true for 465, false for 587
             auth: {
                 user: process.env.mailUser,
                 pass: process.env.mailPass,
@@ -98,12 +98,59 @@ const postSignup = async (req, res) => {
                 }
             });
         });
-
     } catch (err) {
         console.error("Error saving to DB:", err);
         if (res.headersSent) return;
         res.status(500).send("Error: " + err.message);
     }
+};
+
+const postSignUpWithGoogle = (req, res) => {
+    const { firstName, lastName, email, photoURL } = req.body;
+
+    User.findOne({ email })
+        .then((existingUser) => {
+            if (existingUser) {
+                return res.status(200).json({
+                    message: "User already exists, login successful",
+                    user: {
+                        id: existingUser._id,
+                        firstName: existingUser.firstName,
+                        lastName: existingUser.lastName,
+                        email: existingUser.email,
+                        profilePic: existingUser.profilePic,
+                    },
+                });
+            }
+
+            const newUser = new User({
+                firstName,
+                lastName,
+                email,
+                profilePic: photoURL,
+                termsAccepted: true,
+                isVerified: true, // Google accounts are already verified
+            });
+            return newUser
+                .save()
+                .then((savedUser) => {
+                    res.status(201).json({
+                        message: "Sign up successful",
+                        user: {
+                            id: savedUser._id,
+                            firstName: savedUser.firstName,
+                            lastName: savedUser.lastName,
+                            email: savedUser.email,
+                            profilePic: savedUser.profilePic,
+                        },
+                    });
+                })
+        })
+        .catch((err) => {
+            console.error("Error checking existing Google user in DB:", err);
+            if (res.headersSent) return;
+            res.status(500).send("Error: " + err.message);
+        });
 };
 
 // const postSignup = async (req, res) => {
@@ -668,4 +715,5 @@ module.exports = {
     verifyEmail,
     forgotPassword,
     resetPassword,
+    postSignUpWithGoogle,
 };
