@@ -19,7 +19,7 @@ const router = express.Router();
 
 router.post("/register", postSignup);
 router.post("/login", postSignin);
-router.post("/google-signup", postSignUpWithGoogle);
+router.post("/google-auth", postSignUpWithGoogle);
 router.get("/dashboard", authMiddleware, getDashboard);
 router.patch("/update-user", authMiddleware, upload.single("profilePic"), updateUser);
 router.post('/verify-email', verifyEmail);
