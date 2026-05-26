@@ -1,4 +1,4 @@
-# EventFlow Backend
+# EventIQ Backend
 
 A RESTful event management and ticket booking backend built with Express.js and MongoDB.
 
@@ -34,7 +34,7 @@ Server defaults to `http://localhost:5000` (or `PORT` from `.env`).
 
 ## Live API
 
-- **Production:** `https://eventflow-backend-fwv4.onrender.com`
+- **Production:** set by deployment (configure your host URL)
 - **Local (development):** `http://localhost:5000`
 
 ## Tech Stack
