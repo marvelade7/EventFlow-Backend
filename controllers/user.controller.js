@@ -106,13 +106,20 @@ const postSignup = async (req, res) => {
 };
 
 const postSignUpWithGoogle = (req, res) => {
+    console.log("Google auth request body:", req.body);
     const { firstName, lastName, email, photoURL } = req.body;
 
-    User.findOne({ email })
+    Customer.findOne({ email })
         .then((existingUser) => {
             if (existingUser) {
+                const token = jwt.sign(
+                    { id: existingUser._id },
+                    process.env.JWT_SECRET,
+                    { expiresIn: "2h" }
+                );
                 return res.status(200).json({
                     message: "User already exists, login successful",
+                    token,
                     user: {
                         id: existingUser._id,
                         firstName: existingUser.firstName,
@@ -123,7 +130,7 @@ const postSignUpWithGoogle = (req, res) => {
                 });
             }
 
-            const newUser = new User({
+            const newUser = new Customer({
                 firstName,
                 lastName,
                 email,
@@ -134,8 +141,14 @@ const postSignUpWithGoogle = (req, res) => {
             return newUser
                 .save()
                 .then((savedUser) => {
+                    const token = jwt.sign(
+                        { id: savedUser._id },
+                        process.env.JWT_SECRET,
+                        { expiresIn: "2h" }
+                    );
                     res.status(201).json({
                         message: "Sign up successful",
+                        token,
                         user: {
                             id: savedUser._id,
                             firstName: savedUser.firstName,
@@ -271,6 +284,7 @@ const postSignin = (req, res) => {
                     firstName: foundUser.firstName,
                     lastName: foundUser.lastName,
                     email: foundUser.email,
+                    profilePic: foundUser.profilePic,
                 },
             });
         })
@@ -339,6 +353,7 @@ const getDashboard = (req, res) => {
             res.json({
                 message: "Dashboard accessed successfully",
                 user: {
+                    _id: user._id,
                     email: user.email,
                     firstName: user.firstName,
                     lastName: user.lastName,
