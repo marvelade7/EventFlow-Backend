@@ -586,12 +586,6 @@ const resetPassword = (req, res) => {
         });
 };
 
-
-
-const getAdminStats = (req, res) => {
-
-};
-
 module.exports = {
     postSignup,
     postSignin,
@@ -602,6 +596,4 @@ module.exports = {
     forgotPassword,
     resetPassword,
     postSignUpWithGoogle,
-    postAdminSignin,
-    getAdminDashboard,
 };
