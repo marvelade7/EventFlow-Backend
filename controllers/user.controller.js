@@ -633,6 +633,7 @@ const postAdminSignin = (req, res) => {
                 firstName: foundAdmin.firstName,
                 lastName: foundAdmin.lastName,
                 email: foundAdmin.email,
+                role: foundAdmin.role,
             },
         });
     });
