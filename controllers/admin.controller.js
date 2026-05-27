@@ -153,6 +153,7 @@ const getAllEvent = (req, res) => {
             }
 
             Event.find()
+                .populate("createdBy", "firstName lastName email")
                 .then((events) => {
                     res.json({
                         message: "Events fetched successfully",
@@ -165,7 +166,17 @@ const getAllEvent = (req, res) => {
                             price: event.price,
                             category: event.category,
                             createdAt: event.createdAt,
-                            createdBy: event.createdBy,
+                            organiserName: event.createdBy
+                                ? `${event.createdBy.firstName} ${event.createdBy.lastName}`
+                                : null,
+                            organiser: event.createdBy
+                                ? {
+                                      id: event.createdBy._id,
+                                      firstName: event.createdBy.firstName,
+                                      lastName: event.createdBy.lastName,
+                                      email: event.createdBy.email,
+                                  }
+                                : null,
                             status: event.status,
                         })),
                     });
