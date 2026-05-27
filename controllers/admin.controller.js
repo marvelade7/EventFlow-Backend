@@ -158,7 +158,7 @@ const getAllEvent = (req, res) => {
                     res.json({
                         message: "Events fetched successfully",
                         events: events.map((event) => ({
-                            name: event.name,
+                            name: event.title,
                             date: event.date,
                             location: event.location,
                             description: event.description,
