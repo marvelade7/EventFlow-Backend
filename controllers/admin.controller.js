@@ -156,7 +156,18 @@ const getAllEvent = (req, res) => {
                 .then((events) => {
                     res.json({
                         message: "Events fetched successfully",
-                        events,
+                        events: events.map((event) => ({
+                            name: event.name,
+                            date: event.date,
+                            location: event.location,
+                            description: event.description,
+                            banner: event.banner,
+                            price: event.price,
+                            category: event.category,
+                            createdAt: event.createdAt,
+                            createdBy: event.createdBy,
+                            status: event.status,
+                        })),
                     });
                 })
                 .catch((err) => {
@@ -191,6 +202,7 @@ const getAllUsers = (req, res) => {
                             bio: user.bio,
                             location: user.location,
                             isVerified: user.isVerified,
+                            createdAt: user.createdAt,
                         })),
                     });
                 })
