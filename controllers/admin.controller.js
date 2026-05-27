@@ -143,6 +143,68 @@ const getAdminStats = (req, res) => {
         });
 };
 
+const getAllEvent = (req, res) => {
+    const adminId = req.user.id;
+
+    Customer.findOne({ _id: adminId, role: "admin" })
+        .then((admin) => {
+            if (!admin) {
+                return res.status(404).json({ message: "Admin not found" });
+            }
+
+            Event.find()
+                .then((events) => {
+                    res.json({
+                        message: "Events fetched successfully",
+                        events,
+                    });
+                })
+                .catch((err) => {
+                    console.error("Error fetching events:", err);
+                    res.status(500).json({ message: "Internal server error" });
+                });
+        })
+        .catch((err) => {
+            console.error("Error fetching admin:", err);
+            res.status(500).json({ message: "Internal server error" });
+        });
+};
+
+const getAllUsers = (req, res) => {
+    const adminId = req.user.id;
+    Customer.findOne({ _id: adminId, role: "admin" })
+        .then((admin) => {
+            if (!admin) {
+                return res.status(404).json({ message: "Admin not found" });
+            }
+
+            Customer.find({ role: "user" })
+                .then((users) => {
+                    res.json({
+                        message: "Users fetched successfully",
+                        users: users.map((user) => ({
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            email: user.email,
+                            profilePic: user.profilePic,
+                            phoneNumber: user.phoneNumber,
+                            bio: user.bio,
+                            location: user.location,
+                            isVerified: user.isVerified,
+                        })),
+                    });
+                })
+                .catch((err) => {
+                    console.error("Error fetching users:", err);
+                    res.status(500).json({ message: "Internal server error" });
+                });
+        })
+        .catch((err) => {
+            console.error("Error fetching admin:", err);
+            res.status(500).json({ message: "Internal server error" });
+        });
+};
+
 // const deleteUser = (req, res) => {
 //     const adminId = req.user.id;
 //     if (!adminId) {
@@ -187,6 +249,8 @@ module.exports = {
     postAdminSignin,
     getAdminDashboard,
     getAdminStats,
+    getAllEvent,
+    getAllUsers,
     // deleteEvent,
     // deleteUser,
 };
