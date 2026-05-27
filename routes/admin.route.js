@@ -10,3 +10,5 @@ const router = express.Router();
 
 router.post("/login", postAdminSignin);
 router.get("/dashboard", authMiddleware, getAdminDashboard);
+
+module.exports = router;

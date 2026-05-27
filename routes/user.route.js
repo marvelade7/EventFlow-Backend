@@ -13,7 +13,6 @@ const {
     forgotPassword,
     resetPassword,
     postSignUpWithGoogle,
-    postAdminSignin,
 } = require("../controllers/user.controller");
 
 const router = express.Router();
