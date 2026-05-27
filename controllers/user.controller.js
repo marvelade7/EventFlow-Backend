@@ -115,7 +115,7 @@ const postSignUpWithGoogle = (req, res) => {
                 const token = jwt.sign(
                     { id: existingUser._id },
                     process.env.JWT_SECRET,
-                    { expiresIn: "2h" }
+                    { expiresIn: "2h" },
                 );
                 return res.status(200).json({
                     message: "User already exists, login successful",
@@ -138,26 +138,24 @@ const postSignUpWithGoogle = (req, res) => {
                 termsAccepted: true,
                 isVerified: true, // Google accounts are already verified
             });
-            return newUser
-                .save()
-                .then((savedUser) => {
-                    const token = jwt.sign(
-                        { id: savedUser._id },
-                        process.env.JWT_SECRET,
-                        { expiresIn: "2h" }
-                    );
-                    res.status(201).json({
-                        message: "Sign up successful",
-                        token,
-                        user: {
-                            id: savedUser._id,
-                            firstName: savedUser.firstName,
-                            lastName: savedUser.lastName,
-                            email: savedUser.email,
-                            profilePic: savedUser.profilePic,
-                        },
-                    });
-                })
+            return newUser.save().then((savedUser) => {
+                const token = jwt.sign(
+                    { id: savedUser._id },
+                    process.env.JWT_SECRET,
+                    { expiresIn: "2h" },
+                );
+                res.status(201).json({
+                    message: "Sign up successful",
+                    token,
+                    user: {
+                        id: savedUser._id,
+                        firstName: savedUser.firstName,
+                        lastName: savedUser.lastName,
+                        email: savedUser.email,
+                        profilePic: savedUser.profilePic,
+                    },
+                });
+            });
         })
         .catch((err) => {
             console.error("Error checking existing Google user in DB:", err);
@@ -165,94 +163,6 @@ const postSignUpWithGoogle = (req, res) => {
             res.status(500).send("Error: " + err.message);
         });
 };
-
-// const postSignup = async (req, res) => {
-//     try {
-//         const { firstName, lastName, email, password, confirmPassword, terms } =
-//             req.body;
-
-//         if (password !== confirmPassword) {
-//             return res.status(400).json({ message: "Passwords do not match" });
-//         }
-
-//         if (!terms) {
-//             return res.status(400).json({ message: "Accept terms first" });
-//         }
-
-//         const existingUser = await Customer.findOne({ email });
-//         if (existingUser) {
-//             return res.status(400).json({ message: "User already exist" });
-//         }
-
-//         let salt = bcrypt.genSaltSync(10);
-//         let hashedPassword = bcrypt.hashSync(password, salt);
-
-//         const newUser = new Customer({
-//             firstName,
-//             lastName,
-//             email,
-//             password: hashedPassword,
-//             termsAccepted: terms,
-//         });
-
-//         const savedUser = await newUser.save();
-
-//         res.status(201).json({
-//             message: "Sign up successful",
-//             user: {
-//                 id: savedUser._id,
-//                 firstName: savedUser.firstName,
-//                 lastName: savedUser.lastName,
-//                 email: savedUser.email,
-//             },
-//         });
-
-//         setTimeout(() => {
-//             const mailUser = process.env.mailUser;
-//             const mailPass = process.env.mailPass;
-
-//             let transporter = nodemailer.createTransport({
-//                 service: "gmail",
-//                 auth: {
-//                     user: mailUser,
-//                     pass: mailPass,
-//                 },
-//             });
-//             let mailOptions = {
-//                 from: mailUser,
-//                 to: [savedUser.email, "marvellousadewuyi72@gmail.com"],
-//                 subject: `Welcome to EventFlow ${savedUser.firstName} 👋`,
-//                 html: `
-//                 <div style="background-color: #f4f4f4; padding: 0 0 10px; border-radius: 30px 30px 0 0  ;">
-//                     <div style="padding-top: 20px; height: 100px; border-radius: 30px 30px 0 0 ; background: linear-gradient(-45deg, #f89b29 0%, #ff0f7b 100% );">
-//                         <h1 style="color:white; text-align: center;">Welcome to EventFlow ${savedUser.firstName}</h1>
-//                     </div>
-//                     <div style="padding: 30px 0; text-align: center;">
-//                         <p style="font-size: 18px;"><span style="font-weight: 600;">Congratulations!</span> Your sign-up was successful!</p>
-//                         <p>Thank you for registering. We are excited to have you on board.</p>
-//                         <div style="padding: 20px 0;">
-//                             <hr style="width: 50%;">
-//                             <p style="margin-bottom: 10px;">Best Regards</p>
-//                             <p style="color: #f89b29; margin-top: 0;">marvelAde</p>
-//                         </div>
-//                     </div>
-//                 </div>
-//             `,
-//             };
-//             transporter.sendMail(mailOptions, function (err, info) {
-//                 if (err) {
-//                     console.log("Error sending mail", err);
-//                 } else {
-//                     console.log("Email sent", info.response);
-//                 }
-//             });
-//         }, 0);
-//     } catch (err) {
-//         console.error("Error saving to DB:", err);
-//         if (res.headersSent) return;
-//         res.status(500).send("Error: " + err.message);
-//     }
-// };
 
 const postSignin = (req, res) => {
     const { email, password } = req.body;
@@ -297,51 +207,6 @@ const postSignin = (req, res) => {
 };
 
 const getDashboard = (req, res) => {
-    // let token = req.headers.authorization.split(" ")[1];
-
-    // if (!token) {
-    //     return res.status(401).json({ message: "No token provided" });
-    // }
-
-    // jwt.verify(token, jwtSecret, (err, decoded) => {
-    //     if (err) {
-    //         return res
-    //             .status(401)
-    //             .json({ message: "Invalid or expired token" });
-    //     } else {
-    //         console.log("Decoded token data:", decoded);
-    //         let userId = decoded.id;
-
-    //         Customer
-    //             .findOne({ _id: userId })
-    //             .then((user) => {
-    //                 if (!user) {
-    //                     return res
-    //                         .status(404)
-    //                         .json({ message: "User not found" });
-    //                 }
-    //                 console.log("User found", user);
-    //                 res.json({
-    //                     message: "Dashboard accessed successfully",
-    //                     user: {
-    //                         email: user.email,
-    //                         firstName: user.firstName,
-    //                         lastName: user.lastName,
-    //                         profilePic: user.profilePic,
-    //                         location: user.location,
-    //                         phoneNumber: user.phoneNumber,
-    //                         bio: user.bio,
-    //                         isVerified: user.isVerified,
-    //                     },
-    //                 });
-    //             })
-    //             .catch((err) => {
-    //                 console.error("Error fetching user:", err);
-    //                 res.status(500).json({ message: "Internal server error" });
-    //             });
-    //     }
-    // });
-
     const userId = req.user.id;
 
     Customer.findOne({ _id: userId })
@@ -721,6 +586,58 @@ const resetPassword = (req, res) => {
         });
 };
 
+// Admin functions
+const postAdminSignin = (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and password are required",
+        });
+    }
+
+    Customer.findOne({ email }).then((foundAdmin) => {
+        if (!foundAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin account not found",
+            });
+        }
+        if (foundAdmin.role !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied: Not an admin",
+            });
+        }
+
+        const isMatch = bcrypt.compareSync(password, foundAdmin.password);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email or password",
+            });
+        }
+
+        const token = jwt.sign(
+            { id: foundAdmin._id, email: foundAdmin.email, role: foundAdmin.role },
+            jwtSecret,
+            { expiresIn: "2h" },
+        );
+        return res.json({
+            success: true,
+            message: "Admin login successful",
+            token,
+            admin: {
+                id: foundAdmin._id,
+                firstName: foundAdmin.firstName,
+                lastName: foundAdmin.lastName,
+                email: foundAdmin.email,
+            },
+        });
+    });
+};
+
 module.exports = {
     postSignup,
     postSignin,
@@ -731,4 +648,5 @@ module.exports = {
     forgotPassword,
     resetPassword,
     postSignUpWithGoogle,
+    postAdminSignin,
 };

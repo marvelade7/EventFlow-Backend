@@ -13,6 +13,7 @@ const {
     forgotPassword,
     resetPassword,
     postSignUpWithGoogle,
+    postAdminSignin,
 } = require("../controllers/user.controller");
 
 const router = express.Router();
@@ -26,5 +27,8 @@ router.post('/verify-email', verifyEmail);
 router.post('/send-otp-email', sendOtpEmail);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+
+// Admin routes
+router.post("/admin/login", postAdminSignin);
 
 module.exports = router;
