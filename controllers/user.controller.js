@@ -586,57 +586,10 @@ const resetPassword = (req, res) => {
         });
 };
 
-// Admin functions
-const postAdminSignin = (req, res) => {
-    const { email, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({
-            success: false,
-            message: "Email and password are required",
-        });
-    }
 
-    Customer.findOne({ email }).then((foundAdmin) => {
-        if (!foundAdmin) {
-            return res.status(404).json({
-                success: false,
-                message: "Admin account not found",
-            });
-        }
-        if (foundAdmin.role !== "admin") {
-            return res.status(403).json({
-                success: false,
-                message: "Access denied: Not an admin",
-            });
-        }
+const getAdminStats = (req, res) => {
 
-        const isMatch = bcrypt.compareSync(password, foundAdmin.password);
-        if (!isMatch) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid email or password",
-            });
-        }
-
-        const token = jwt.sign(
-            { id: foundAdmin._id, email: foundAdmin.email, role: foundAdmin.role },
-            jwtSecret,
-            { expiresIn: "2h" },
-        );
-        return res.json({
-            success: true,
-            message: "Admin login successful",
-            token,
-            admin: {
-                id: foundAdmin._id,
-                firstName: foundAdmin.firstName,
-                lastName: foundAdmin.lastName,
-                email: foundAdmin.email,
-                role: foundAdmin.role,
-            },
-        });
-    });
 };
 
 module.exports = {
@@ -650,4 +603,5 @@ module.exports = {
     resetPassword,
     postSignUpWithGoogle,
     postAdminSignin,
+    getAdminDashboard,
 };

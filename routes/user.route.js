@@ -29,6 +29,6 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
 
 // Admin routes
-router.post("/admin/login", postAdminSignin);
+
 
 module.exports = router;

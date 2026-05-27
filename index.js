@@ -11,6 +11,7 @@ const eventRoutes = require("./routes/event.route");
 const paymentRoutes = require("./routes/payment.route");
 const bookingRoutes = require("./routes/bookings.route");
 const availabilityRoutes = require("./routes/availability.route");
+const adminRoutes = require("./routes/admin.route");
 
 mongoose
     .connect(URI)
@@ -32,6 +33,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use('/api/available', availabilityRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get("/", (req, res) => {
     res.send("Backend is running");
