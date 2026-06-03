@@ -109,7 +109,11 @@ const postSignUpWithGoogle = (req, res) => {
     console.log("Google auth request body:", req.body);
     const { firstName, lastName, email, photoURL } = req.body;
 
-    Customer.findOne({ email })
+    Customer.findOneAndUpdate(
+        { email, isVerified: false },
+        { $set: { isVerified: true } },
+        { new: true },
+    )
         .then((existingUser) => {
             if (existingUser) {
                 const token = jwt.sign(
@@ -126,6 +130,7 @@ const postSignUpWithGoogle = (req, res) => {
                         lastName: existingUser.lastName,
                         email: existingUser.email,
                         profilePic: existingUser.profilePic,
+                        isVerified: existingUser.isVerified,
                     },
                 });
             }
